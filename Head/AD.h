@@ -8,9 +8,9 @@
 /*-----------------------------*
  *  Macros for constants       *
  *----------------------------*/
-//PIN22   AN0/P4.0   AD-RT-BOT	 底部温度
-//PIN21   AN1/P4.1   AD-RT-TOP   顶部温度
-//PIN20   AN2/P4.2   AD-POWER_IN 12V电源
+//PIN22   AN0/P4.0   AD-RT-BOT	 Bottom Temperature
+//PIN21   AN1/P4.1   AD-RT-TOP   TOP Temperature
+//PIN20   AN2/P4.2   AD-POWER_IN 12V Power input
 
 #define	 AD_CH_BOT	0
 #define  AD_CH_TOP	1

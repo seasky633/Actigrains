@@ -1,0 +1,1 @@
+"SRC\math.asm" NOMOD51 SET (SMALL) DEBUG PRINT(.\LST\math.lst) OBJECT(.\OBJ\math.obj) EP

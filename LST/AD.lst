@@ -1,0 +1,421 @@
+C51 COMPILER V9.52.0.0   AD                                                                12/24/2015 16:08:14 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE AD
+OBJECT MODULE PLACED IN .\OBJ\AD.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE SRC\AD.c BROWSE DEBUG OBJECTEXTEND PRINT(.\LST\AD.lst) OBJECT(.\OBJ\AD.obj)
+
+line level    source
+
+   1          /*-----------------------------*
+   2           *  include head files         *
+   3           *----------------------------*/
+   4          #include ".\Head\HD_cfg.h"
+   5          
+   6          /*-----------------------------*
+   7           *  Macros for constants       *
+   8           *----------------------------*/
+   9          #define         AD_TEMP_SIZE            3               //临时数据缓冲的大小
+  10          #define     AD_CH_NUM                   2               //通道个数
+  11          #define     AD_STAT_SIZE                8               //每个通道堆栈的大小
+  12          
+  13          /*-----------------------------*
+  14           *  Macros for others          *
+  15           *----------------------------*/
+  16          
+  17          
+  18          /*-----------------------------*
+  19           *  type definitions           *
+  20           *----------------------------*/
+  21          
+  22          
+  23          /*-----------------------------*
+  24           *  structure,union and enum   *
+  25           *----------------------------*/
+  26          
+  27          
+  28          /*-----------------------------*
+  29           *  public functions prototypes*
+  30           *----------------------------*/
+  31          void    ADC_INIT(void);
+  32          uint8   ADCGetData(uint8 u8CH);
+  33          uint16  ADCGetVal(uint8 u8CH);
+  34          //void  Sort8(uint8     *pDat,uint8     u8Size);
+  35          void    Sort16(uint16 *pDat,uint8 u8Size);
+  36          void    ADCProc(void);
+  37          
+  38          /*-----------------------------*
+  39           *  static functions prototypes*
+  40           *----------------------------*/
+  41          static  void    ADCSelChannel(uint8  u8Ch);                                                     
+  42          static  uint8   GetDegree(uint16 adData,uint8 u8CH);
+  43          static  uint8   Dichotomy_Search(uint16 u8Array[],uint8 n,uint16 u8Key);  
+  44          
+  45          /*-----------------------------*
+  46           *  public variable declaration*
+  47           *----------------------------*/
+  48          uint16  idata   u16ADBuf[AD_CH_NUM][AD_STAT_SIZE];      //ADC缓冲器
+  49          uint16  idata   u16AdTempBuf[AD_TEMP_SIZE];                 //临时数据缓冲
+  50          uint8   u8CurCH         =       0;                                                      //当前通道
+  51          uint8   u8CurCHID;                                                                      //当前通道对应的ID
+  52          uint8   u8ADCnt         =       0;                                                      //连续转换的次数
+  53          uint8   u8ChgCnt        =       0;                                                      //转换次数
+  54          uint8   idata   g_u8ADResult[AD_CH_NUM];                        //AD转换最终结果(温度)
+  55          uint16  idata   g_u16ADValue[AD_CH_NUM];                        //AD转换最终结果(AD)
+C51 COMPILER V9.52.0.0   AD                                                                12/24/2015 16:08:14 PAGE 2   
+
+  56          uint8   code    CHNO2ID[]       =       {0,2};  
+  57          uint16  idata   u16AdVBuf;
+  58          uint16  idata   u16AdVValue;
+  59          uint8   idata   u8AdVCnt;
+  60          /*-----------------------------*
+  61           *  static variable declaration*
+  62           *----------------------------*/
+  63          
+  64          
+  65          /*-----------------------------------------------------------------------------*
+  66           *  Function Description:                                                      *
+  67           *      AD convert complete interrupt handler.                                 *
+  68           *  Parameters:                                                                *
+  69           *      None                                                                   *
+  70           *  Return                                                                     *
+  71           *      None                                                                   *
+  72           *----------------------------------------------------------------------------*/
+  73          void    ADC_ISP(void) interrupt 6
+  74          {
+  75   1              uint16  u16AdTemp;
+  76   1          uint8   u8Bankbak = INSCON;
+  77   1          
+  78   1              Enter_Bank0;
+  79   1              EA      =       0;
+  80   1              ADCON   &=      Bin(10111111);                  //清ADC中断请求标志,ADCIF=0
+  81   1      
+  82   1          if(bADOK)
+  83   1          {
+  84   2              //AN2电压检测处理
+  85   2              u16AdTemp = (ADDH << 2) | ADDL;         //read ADC
+  86   2              u16AdVBuf += u16AdTemp;
+  87   2              if(++u8AdVCnt>=16)
+  88   2              {
+  89   3                  u8AdVCnt = 0;
+  90   3                  u16AdVValue = u16AdVBuf>>4;    
+  91   3                              u16AdVBuf = 0;
+  92   3                  if(u16AdVValue<750)     //9v
+  93   3                  {
+  94   4                      bPwroffline = 0;    //power down
+  95   4                  }
+  96   3                  else
+  97   3                  {
+  98   4                      bPwroffline = 0;
+  99   4                  }
+ 100   3              }
+ 101   2              ADCON |= Bin(00000001);                     //GO/DONE标志位置一，开始下一次ADC转换
+ 102   2          }
+ 103   1          else
+ 104   1          {
+ 105   2                  u16AdTemp = (ADDH << 2) | ADDL;             //read ADC
+ 106   2              u16AdTempBuf[u8ADCnt++] = u16AdTemp;//将转换结果保存到临时缓冲区中
+ 107   2              
+ 108   2              if(u8ADCnt>=AD_TEMP_SIZE)           //是否连续采集了(AD_TEMP_SIZE)次
+ 109   2                  {                                   
+ 110   3                          u8ADCnt  =  0;
+ 111   3                          bADOK        =      1;                          //当临时缓冲区已存满数据时，置ADOK位为1
+ 112   3      
+ 113   3                  //切换到AN2检测电压
+ 114   3                  ADCH = 0x04; 
+ 115   3                          ADCON = Bin(10000101);      
+ 116   3                  }
+ 117   2              else
+C51 COMPILER V9.52.0.0   AD                                                                12/24/2015 16:08:14 PAGE 3   
+
+ 118   2                  {
+ 119   3                          ADCON |= Bin(00000001);                     //GO/DONE标志位置一，开始下一次ADC转换
+ 120   3                  }
+ 121   2          }
+ 122   1              
+ 123   1              EA      =       1;
+ 124   1          INSCON = u8Bankbak;
+ 125   1      }
+ 126          
+ 127          /*-----------------------------------------------------------------------------*
+ 128           *  Function Description:                                                      *
+ 129           *      Initialize the ADC.                                                    *
+ 130           *  Parameters:                                                                *
+ 131           *      None                                                                   *
+ 132           *  Return                                                                     *
+ 133           *      None                                                                   *
+ 134           *----------------------------------------------------------------------------*/
+ 135          void    ADC_INIT(void)
+ 136          {
+ 137   1              ADCON   |=      Bin(10000000);                  //打开ADC模块
+ 138   1              ADCON1  =   Bin(00000100);          //分辨率为10bit
+ 139   1              ADT             =       Bin(11101111);              /* ADC时钟为系统时钟的32分频，T(ad) = 32*(1/8M) = 4us
+ 140   1                                                                                      ADC采样时间为15个ADC时钟，T(s)= (14+1)*T(ad) = 60us
+ 141   1                                                                                      ADC转换时间为12*T(ad) + T(s) = 108us */
+ 142   1              u8CurCH         =   0;                  //u8CurCH : 当前通道序号
+ 143   1              u8CurCHID       =       CHNO2ID[u8CurCH];       //u8CurCHID: 当前通道ID
+ 144   1              ADCSelChannel(u8CurCHID);                       //选择通道
+ 145   1              ADCON   |=  Bin(00000001);                      //开始ADC转换
+ 146   1      }
+ 147          
+ 148          /*-----------------------------------------------------------------------------*
+ 149           *  Function Description:                                                      *
+ 150           *      Select ADC Channel.                                                    *
+ 151           *  Parameters:                                                                *
+ 152           *      u8Ch                                                                   *
+ 153           *  Return                                                                     *
+ 154           *      None                                                                   *
+ 155           *----------------------------------------------------------------------------*/
+ 156          static  void    ADCSelChannel(uint8  u8CH)
+ 157          {
+ 158   1              ADCH    =       Bin(00000000);                  //切换前设置为IO状态
+ 159   1              ADCON   &=      Bin(11110001);                  //选择通道之前先清除
+ 160   1              ADCON   |=  u8CH;
+ 161   1              
+ 162   1              if(u8CH==0)     ADCH = 0x01;                    //AN0
+ 163   1              if(u8CH==2)     ADCH = 0x02;                    //AN1
+ 164   1      }
+ 165          
+ 166          /*-----------------------------------------------------------------------------*
+ 167           *  Function Description:                                                      *
+ 168           *      查询AD转换最终结果.                                                    *
+ 169           *  Parameters:                                                                *
+ 170           *      转换通道                                                               *
+ 171           *  Return                                                                     *
+ 172           *      AD转换最终结果(温度)                                                   *
+ 173           *----------------------------------------------------------------------------*/
+ 174          uint8   ADCGetData(uint8 u8CH)
+ 175          {
+ 176   1              return  g_u8ADResult[u8CH];     
+ 177   1      }
+ 178          
+ 179          /*-----------------------------------------------------------------------------*
+C51 COMPILER V9.52.0.0   AD                                                                12/24/2015 16:08:14 PAGE 4   
+
+ 180           *  Function Description:                                                      *
+ 181           *      查询AD转换最终结果.                                                    *
+ 182           *  Parameters:                                                                *
+ 183           *      转换通道                                                               *
+ 184           *  Return                                                                     *
+ 185           *      AD转换最终结果(AD)                                                         *
+ 186           *----------------------------------------------------------------------------*/
+ 187          uint16  ADCGetVal(uint8 u8CH)
+ 188          {
+ 189   1              return  g_u16ADValue[u8CH];
+ 190   1      }
+ 191          
+ 192          /*-----------------------------------------------------------------------------*
+ 193           *  Function Description:                                                      *
+ 194           *      AD值转换成温度值并处理.                                                *
+ 195           *  Parameters:                                                                *
+ 196           *      AD值,转换通道                                                          *
+ 197           *  Return                                                                     *
+ 198           *      温度值                                                                 *
+ 199           *----------------------------------------------------------------------------*/
+ 200          static  uint8   GetDegree(uint16 adData,uint8 u8CH)
+ 201          {
+ 202   1              uint8   i=0;
+ 203   1              adData  = adData^0x03ff;
+ 204   1          
+ 205   1          switch(u8CH)
+ 206   1              {
+ 207   2                  case    AD_CH_BOT:
+ 208   2                              //判断AD是否在查找范围内(0度到180度)
+ 209   2                              if((adData>=31)&&(adData<948))
+ 210   2                              {
+ 211   3                                      //对分法查找相应温度
+ 212   3                                      i =     Dichotomy_Search((uint16*)TempTable3950_50K,181,adData);
+ 213   3                              }
+ 214   2                              else
+ 215   2                              {
+ 216   3                                      if(adData<31)    i = 0;
+ 217   3                                      if(adData>=948)  i = 181;
+ 218   3                              }
+ 219   2                              break;
+ 220   2      
+ 221   2                      case    AD_CH_TOP:
+ 222   2                              //判断AD是否在查找范围内(0度到120度)
+ 223   2                              if((adData>=27)&&(adData<784))
+ 224   2                          {
+ 225   3                                      //对分法查找相应温度
+ 226   3                                      i =     Dichotomy_Search((uint16*)TempTable4200_103K,121,adData);
+ 227   3                              }
+ 228   2                              else
+ 229   2                              {
+ 230   3                                      if(adData<27)    i = 0;
+ 231   3                                      if(adData>=784)  i = 121;
+ 232   3                              }
+ 233   2                              
+ 234   2                      default:
+ 235   2                          break;
+ 236   2              }
+ 237   1      
+ 238   1              return  i;
+ 239   1      }
+ 240          
+ 241          /*                     下面程序可移植                    */
+C51 COMPILER V9.52.0.0   AD                                                                12/24/2015 16:08:14 PAGE 5   
+
+ 242          
+ 243          /*-----------------------------------------------------------------------------*
+ 244           *  Function Description:                                                      *
+ 245           *      冒泡排序.                                                              *
+ 246           *  Parameters:                                                                *
+ 247           *      pDat需要排序的数据指针，u8Size需要排序的个数.                          *
+ 248           *  Return                                                                     *
+ 249           *      None                                                                   *
+ 250           *----------------------------------------------------------------------------*/
+ 251          //void  Sort8(uint8     *pDat,uint8     u8Size)
+ 252          //{
+ 253          //      uint8   i,j,temp,tag=1;
+ 254          
+ 255          //      for(i = 0; tag==1&&i<u8Size-1; i++)
+ 256          //      {
+ 257          //              tag = 0;
+ 258          //              for(j=0; j<u8Size-i-1; j++)
+ 259          //              {
+ 260          //                      if(pDat[j]>pDat[j+1])
+ 261          //                      {
+ 262          //                              temp    =       pDat[j];
+ 263          //                              pDat[j]  =  pDat[j+1];
+ 264          //                              pDat[j+1] = temp;       
+ 265          //                              tag = 1;                                
+ 266          //                      }
+ 267          //              }
+ 268          //      }
+ 269          //}
+ 270          
+ 271          void    Sort16(uint16 *pDat,uint8 u8Size)
+ 272          {
+ 273   1              uint8   i,j,tag=1;
+ 274   1              uint16  temp;
+ 275   1      
+ 276   1              for(i = 0; tag==1&&i<u8Size-1; i++)
+ 277   1              {
+ 278   2                      tag = 0;
+ 279   2                      for(j=0; j<u8Size-i-1; j++)
+ 280   2                      {
+ 281   3                              if(pDat[j]>pDat[j+1])
+ 282   3                              {
+ 283   4                                      temp    =       pDat[j];
+ 284   4                                      pDat[j]  =  pDat[j+1];
+ 285   4                                      pDat[j+1] = temp;       
+ 286   4                                      tag = 1;                                
+ 287   4                              }
+ 288   3                      }
+ 289   2              }
+ 290   1      }
+ 291          
+ 292          /*-----------------------------------------------------------------------------*                                                     
+             -    
+ 293           *  Function Description:                                                                    
+ 294           *      有序数组二分查找算法
+ 295           *      Parameters: 
+ 296           *              u8Array[]:被查找数组,   n:被查找数组元素个数,   u8Key:被查找的关键值
+ 297           *      Return:   
+ 298           *              对应的温度值
+ 299           *----------------------------------------------------------------------------*/
+ 300          static  uint8   Dichotomy_Search(uint16 u8Array[],uint8 n,uint16 u8Key)    
+ 301          {    
+ 302   1          uint8               u8Low,u8High,u8Mid;    
+C51 COMPILER V9.52.0.0   AD                                                                12/24/2015 16:08:14 PAGE 6   
+
+ 303   1          u8Low = 0;    
+ 304   1          u8High = n - 1;    
+ 305   1              
+ 306   1          while(1) {    
+ 307   2                      u8Mid = (u8High+u8Low)/2;    
+ 308   2                      if(u8Key>=u8Array[u8Mid]){    
+ 309   3                         if(u8Mid==u8High||u8Key < u8Array[u8Mid+1])
+ 310   3                          return(u8Mid);    
+ 311   3                      }
+ 312   2                      /*key>array[mid] 表明要求查找的值在[mid+1,high]*/   
+ 313   2                      /*否则,在[low,mid-1]*/   
+ 314   2                      if(u8Low==u8High)break;
+ 315   2                      if(u8Key > u8Array[u8Mid])    
+ 316   2                          u8Low = u8Mid + 1;    
+ 317   2                      else   
+ 318   2                          u8High = u8Mid - 1;    
+ 319   2              }
+ 320   1              return(0);    
+ 321   1      }
+ 322          
+ 323          /*-----------------------------------------------------------------------------*
+ 324           *  Function Description:                                                      *
+ 325           *      ADC采集处理                                                                *
+ 326           *  Parameters:                                                                *
+ 327           *      None                                                                   *
+ 328           *  Return                                                                     *
+ 329           *      None                                                                   *
+ 330           *----------------------------------------------------------------------------*/
+ 331          void    ADCProc(void)
+ 332          {
+ 333   1              uint16  u16AdTemp;
+ 334   1              uint8   i,j;
+ 335   1              uint16  u16Tmp;
+ 336   1      
+ 337   1              if(bADOK==1)
+ 338   1              {
+ 339   2                  ADCON = 0;      //停止转换     
+ 340   2                      bADOK=0;                //清除ADOK标志位
+ 341   2      
+ 342   2                      //中值滤波
+ 343   2                      Sort16(u16AdTempBuf,AD_TEMP_SIZE);
+ 344   2                      u16AdTemp =     u16AdTempBuf[AD_TEMP_SIZE/2];
+ 345   2                      u16ADBuf[u8CurCH][u8ChgCnt]     =       u16AdTemp;
+ 346   2              
+ 347   2              //滑动平均值滤波
+ 348   2                      u8CurCH++;              //转到下一个通道
+ 349   2                      if(u8CurCH>=AD_CH_NUM)
+ 350   2                      {
+ 351   3                              u8CurCH  =      0;
+ 352   3                              u8ChgCnt++;
+ 353   3                              if(u8ChgCnt==AD_STAT_SIZE)
+ 354   3                              {
+ 355   4                                      u8ChgCnt = u8ChgCnt-1; 
+ 356   4                                      //得到AD的最终值
+ 357   4                                      for(j=0;j<AD_CH_NUM;j++)
+ 358   4                                      {
+ 359   5                                              u16Tmp  =       0;
+ 360   5                                              for(i=0;i<AD_STAT_SIZE;i++)
+ 361   5                                              {
+ 362   6                                                      u16Tmp  +=      u16ADBuf[j][i];
+ 363   6                                              }
+ 364   5                                              u16Tmp = u16Tmp/AD_STAT_SIZE;
+C51 COMPILER V9.52.0.0   AD                                                                12/24/2015 16:08:14 PAGE 7   
+
+ 365   5                                              g_u16ADValue[j] = u16Tmp;                               //(AD值)
+ 366   5                                              g_u8ADResult[j] = GetDegree(u16Tmp,j);  //(温度值)
+ 367   5                                      }
+ 368   4                                                                      
+ 369   4                                      for(j=0;j<AD_CH_NUM;j++)
+ 370   4                                      {
+ 371   5                                              for(i=0;i<AD_STAT_SIZE-1;i++)
+ 372   5                                              {
+ 373   6                                                      u16ADBuf[j][i]  =       u16ADBuf[j][i+1];
+ 374   6                                              }
+ 375   5                                      } 
+ 376   4                              }
+ 377   3                      }
+ 378   2      
+ 379   2                      u8CurCHID =     CHNO2ID[u8CurCH];
+ 380   2                      ADCSelChannel(u8CurCHID);                               //选择通道
+ 381   2                      ADCON   |=  Bin(10000000);                              //打开ADC模块
+ 382   2                      delay(5);
+ 383   2                      ADCON   |=  Bin(00000001);                              //开始转换
+ 384   2              }
+ 385   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    999    ----
+   CONSTANT SIZE    =      2    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      4      23
+   IDATA SIZE       =     49    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

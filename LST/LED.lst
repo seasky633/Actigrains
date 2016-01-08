@@ -1,0 +1,201 @@
+C51 COMPILER V9.52.0.0   LED                                                               12/24/2015 16:08:14 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE LED
+OBJECT MODULE PLACED IN .\OBJ\LED.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE SRC\LED.c BROWSE DEBUG OBJECTEXTEND PRINT(.\LST\LED.lst) OBJECT(.\OBJ\LED.o
+                    -bj)
+
+line level    source
+
+   1          /*-----------------------------*
+   2           *  include head files         *
+   3           *----------------------------*/
+   4          #include ".\Head\HD_cfg.h"
+   5          
+   6          /*-----------------------------*
+   7           *  Macros for constants       *
+   8           *----------------------------*/
+   9          
+  10          /*-----------------------------*
+  11           *  Macros for others          *
+  12           *----------------------------*/
+  13          
+  14          
+  15          /*-----------------------------*
+  16           *  type definitions           *
+  17           *----------------------------*/
+  18          
+  19          
+  20          /*-----------------------------*
+  21           *  structure,union and enum   *
+  22           *----------------------------*/
+  23          
+  24          
+  25          /*-----------------------------*
+  26           *  public functions prototypes*
+  27           *----------------------------*/
+  28          void    SetLedBlank(uint8);
+  29          void    ClrLedBlank(uint8);
+  30          void    LedOn(uint8);
+  31          void    LedProc(void);
+  32          
+  33          /*-----------------------------*
+  34           *  static functions prototypes*
+  35           *----------------------------*/
+  36          
+  37          
+  38          /*-----------------------------*
+  39           *  public variable declaration*
+  40           *----------------------------*/
+  41                          
+  42          
+  43          /*-----------------------------*
+  44           *  static variable declaration*
+  45           *----------------------------*/
+  46          static  uint8   g_u8LedVal;   //控制灯的开关
+  47          static  uint8   g_u8LedBlank; //控制灯的闪烁
+  48          static  uint8   g_u8LedBuf;   //有效值=开关&闪烁
+  49          uint8 xdata g_u8LedTxDAT1;
+  50          uint8 xdata g_u8LedTxDAT2;
+  51          
+  52          /*-----------------------------------------------------------------------------*
+  53           *  Function Description:                                                      *
+  54           *      设置LED闪烁位.                                                         *
+C51 COMPILER V9.52.0.0   LED                                                               12/24/2015 16:08:14 PAGE 2   
+
+  55           *  Parameters:                                                                *
+  56           *      u8Led                                                                  *
+  57           *  Return                                                                     *
+  58           *      None                                                                   *
+  59           *----------------------------------------------------------------------------*/
+  60          void    SetLedBlank(uint8 u8Led)
+  61          {
+  62   1              g_u8LedBlank |= u8Led;
+  63   1              g_u8LedVal |= u8Led;
+  64   1      }
+  65          
+  66          /*-----------------------------------------------------------------------------*
+  67           *  Function Description:                                                      *
+  68           *      清除LED闪烁位.                                                         *
+  69           *  Parameters:                                                                *
+  70           *      u8Led                                                                  *
+  71           *  Return                                                                     *
+  72           *      None                                                                   *
+  73           *----------------------------------------------------------------------------*/
+  74          void    ClrLedBlank(uint8 u8Led)
+  75          {
+  76   1              g_u8LedBlank &= ~u8Led;
+  77   1              g_u8LedVal &= ~u8Led;
+  78   1      }
+  79          
+  80          /*-----------------------------------------------------------------------------*
+  81           *  Function Description:                                                      *
+  82           *      设置LED开关位.                                                         *
+  83           *  Parameters:                                                                *
+  84           *      u8Led                                                                  *
+  85           *  Return                                                                     *
+  86           *      None                                                                   *
+  87           *----------------------------------------------------------------------------*/
+  88          void    LedOn(uint8 u8Led)
+  89          {
+  90   1              g_u8LedVal |= u8Led;
+  91   1      }
+  92          
+  93          /*-----------------------------------------------------------------------------*
+  94           *  Function Description:                                                      *
+  95           *      LED处理进程.                                                           *
+  96           *  Parameters:                                                                *
+  97           *      None                                                                   *
+  98           *  Return                                                                     *
+  99           *      None                                                                   *
+ 100           *----------------------------------------------------------------------------*/
+ 101          void    LedProc(void)
+ 102          {
+ 103   1          g_u8LedTxDAT1 = 0;
+ 104   1          g_u8LedTxDAT2 = 0;
+ 105   1          
+ 106   1              if(bSys_1000MS)
+ 107   1              {
+ 108   2                      if(bLEDBlank)
+ 109   2                              bLEDBlank =     0;
+ 110   2                      else
+ 111   2                              bLEDBlank =     1;
+ 112   2              }
+ 113   1              
+ 114   1              if(bLEDBlank)
+ 115   1              {
+ 116   2                      g_u8LedBuf = g_u8LedVal;
+C51 COMPILER V9.52.0.0   LED                                                               12/24/2015 16:08:14 PAGE 3   
+
+ 117   2              }
+ 118   1              else
+ 119   1              {
+ 120   2                      g_u8LedBuf = g_u8LedVal & (~g_u8LedBlank);
+ 121   2              }
+ 122   1      
+ 123   1          if((bPwroffline==1)||(bLidOCDEn==0)) //掉电或开盖时关闭指示灯
+ 124   1          {
+ 125   2              Enter_Bank1;
+ 126   2              IO_LED_BKL = 0;         
+ 127   2              Enter_Bank0;    
+ 128   2          }
+ 129   1          else
+ 130   1          {    
+ 131   2              if(TstBit(g_u8LedBuf,NUM_LED_START))
+ 132   2              {
+ 133   3                  SetBit(g_u8LedTxDAT1, NUM_LED_START);                             
+ 134   3              }
+ 135   2      
+ 136   2              if(TstBit(g_u8LedBuf,NUM_LED_STOP))
+ 137   2              {
+ 138   3                  SetBit(g_u8LedTxDAT1, NUM_LED_STOP);
+ 139   3              }       
+ 140   2      
+ 141   2              if(TstBit(g_u8LedBuf,NUM_LED_REHEAT))
+ 142   2              {
+ 143   3                  SetBit(g_u8LedTxDAT1, NUM_LED_REHEAT);
+ 144   3              }
+ 145   2      
+ 146   2              if(TstBit(g_u8LedBuf,NUM_LED_WARM))
+ 147   2              {
+ 148   3                      SetBit(g_u8LedTxDAT1, NUM_LED_WARM);            
+ 149   3              }
+ 150   2      
+ 151   2              if(TstBit(g_u8LedBuf,NUM_LED_DELAY))
+ 152   2              {
+ 153   3                  SetBit(g_u8LedTxDAT1, NUM_LED_DELAY);               
+ 154   3              }
+ 155   2      
+ 156   2              if(TstBit(g_u8LedBuf,NUM_LED_BKL))
+ 157   2              {
+ 158   3                  Enter_Bank1;
+ 159   3                      IO_LED_BKL = 1;         
+ 160   3                  Enter_Bank0;
+ 161   3              }
+ 162   2              else
+ 163   2              {
+ 164   3                  Enter_Bank1;
+ 165   3                      IO_LED_BKL = 0;         
+ 166   3                  Enter_Bank0;                                
+ 167   3              }
+ 168   2      
+ 169   2              g_u8LedTxDAT2 = g_u8LedTxDAT1<<3;
+ 170   2          }
+ 171   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    167    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      2    ----
+   PDATA SIZE       =   ----    ----
+C51 COMPILER V9.52.0.0   LED                                                               12/24/2015 16:08:14 PAGE 4   
+
+   DATA SIZE        =      3    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

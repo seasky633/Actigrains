@@ -1,0 +1,163 @@
+C51 COMPILER V9.52.0.0   MAIN                                                              12/24/2015 16:08:15 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN .\OBJ\Main.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE SRC\Main.c BROWSE DEBUG OBJECTEXTEND PRINT(.\LST\Main.lst) OBJECT(.\OBJ\Mai
+                    -n.obj)
+
+line level    source
+
+   1          //==============================================================================
+   2          //      Project     : Actigrains Multicooker(fz23)
+   3          //      Date        : 2015.7.2
+   4          //      Author      : wuyong
+   5          
+   6          //      Device      : SH79F3283U(TQFP48)
+   7          //      Voltage     : 5V
+   8          //      Frequency       : Internal 12 MHz OSC,external 32.768KHz OSC for RTC & LCD
+   9          //  ADC range   : 5V (Vdd)
+  10          //==============================================================================
+  11          //      History :
+  12          /*
+  13              2015-07-02  1. 开始编写程序
+  14              2015-09-18  1. 调整油温
+  15                  2015-12-01  1. V3版程序修改
+  16          
+  17          //==============================================================================
+  18          
+  19          /*-----------------------------*
+  20           *  include head files         *
+  21           *----------------------------*/
+  22          #include ".\Head\HD_cfg.h"
+  23          #include ".\Head\System.h"
+  24          #include ".\Head\TempCtr.h"
+  25          #include ".\Head\Script.h"
+  26          
+  27          /*-----------------------------*
+  28           *  public variable declaration*
+  29           *----------------------------*/
+  30          uint8   g_u8SecTick     = 0;                                    //时钟节拍计数器
+  31          uint8   bdata    g_u8SysStatus[4];                      //系统标志
+  32          sbit bSysTick    =      g_u8SysStatus[0]^0;             //系统Tick标志
+  33          sbit bSys_1000MS =  g_u8SysStatus[0]^1;         //系统1000ms标志
+  34          sbit bKeyPress   =  g_u8SysStatus[0]^2;         //有无按键标志
+  35          sbit bADOK       =      g_u8SysStatus[0]^3;     //AD转换完成标志
+  36          sbit bFirstPress =      g_u8SysStatus[0]^4;     //第一次按键标志
+  37          sbit bNewKey     =      g_u8SysStatus[0]^5;     //新按键按下标志
+  38          sbit bLEDBlank   =      g_u8SysStatus[0]^6;             //闪灯标志
+  39          sbit bTempReach  =  g_u8SysStatus[0]^7;         //达到温度值标志
+  40          
+  41          sbit bHeatArdReq  = g_u8SysStatus[1]^0;     //侧部加热请求标志
+  42          sbit bHeatTopReq  = g_u8SysStatus[1]^1;     //顶部加热请求标志
+  43          sbit bCookBySctEN = g_u8SysStatus[1]^2;     //允许按温度曲线烹饪标志
+  44          sbit bSysPwrOn    = g_u8SysStatus[1]^3;     //系统上电标志
+  45          sbit bTempAch1st  = g_u8SysStatus[1]^4;     //第一次达到设定温度点
+  46          sbit bHeatState   = g_u8SysStatus[1]^5;     //加热状态标志
+  47          sbit bCalBookTime_EN = g_u8SysStatus[1]^6;      //允许预约计算标志
+  48          sbit bLEDComeback =     g_u8SysStatus[1]^7;         //LED显示恢复标志
+  49          
+  50          sbit bTimeAdjSt     = g_u8SysStatus[2]^0;   //时间调整判断标志
+  51          sbit bPwroffline    = g_u8SysStatus[2]^1;   //掉电
+  52          sbit bHeatPwrReq    = g_u8SysStatus[2]^2;   //加热总开关
+  53          sbit bTimeCountDown = g_u8SysStatus[2]^3;
+  54          sbit bTimeDisp_EN   = g_u8SysStatus[2]^4;
+C51 COMPILER V9.52.0.0   MAIN                                                              12/24/2015 16:08:15 PAGE 2   
+
+  55          sbit bBookTime_EN   = g_u8SysStatus[2]^5;   //预约时间有效
+  56          sbit bTempDisp_EN   = g_u8SysStatus[2]^6;   
+  57          sbit bWarm_Start    = g_u8SysStatus[2]^7;   //开始保温
+  58          
+  59          sbit bStageChgReq   = g_u8SysStatus[3]^0;       //控制跳转请求
+  60          sbit bDebug_EN      = g_u8SysStatus[3]^1;       
+  61          sbit bWarm_EN       = g_u8SysStatus[3]^2;       //保温标志
+  62          sbit bBoilChk_EN    = g_u8SysStatus[3]^3;       //沸腾判断有效
+  63          sbit bBoilReach     = g_u8SysStatus[3]^4;   //已沸腾标志
+  64          sbit bKeyMusic_EN   = g_u8SysStatus[3]^5;       //蜂鸣器标志
+  65          sbit bSoakStage     = g_u8SysStatus[3]^6;   //吸水阶段
+  66          sbit bHeatStage     = g_u8SysStatus[3]^7;   //加热阶段
+  67          
+  68          uint8   bdata   g_u8ErrorType;          //报警类型
+  69          sbit bTopSensorErr   = g_u8ErrorType^0;     //上传感器错误标志
+  70          sbit bBotSensorErr   = g_u8ErrorType^1;     //下传感器错误标志
+  71          sbit bIGBTSensorErr  = g_u8ErrorType^2;     //IGBT传感器错误标志
+  72          sbit bNoPanErr       = g_u8ErrorType^3;         //无锅标志
+  73          sbit bPanOverTempErr = g_u8ErrorType^4;         //锅底温度过高
+  74          sbit bVoltageErr     = g_u8ErrorType^5;         //电压异常标志
+  75          sbit bHaltHeatErr    = g_u8ErrorType^6;         //不加热标志
+  76          sbit bIGBTOverTempErr= g_u8ErrorType^7;     //IGBT温度过高标志
+  77          
+  78          /*-----------------------------*
+  79           *  static variable declaration*
+  80           *----------------------------*/
+  81          
+  82          /*-----------------------------------------------------------------------------*
+  83           *  Function Description:                                                      *
+  84           *      Main Function.                                                         *
+  85           *  Parameters:                                                                *
+  86           *      None                                                                   *
+  87           *  Return                                                                     *
+  88           *      None                                                                   *
+  89           *----------------------------------------------------------------------------*/
+  90          void main(void)
+  91          {       
+  92   1              System_INIT();
+  93   1              EnterReset();
+  94   1      
+  95   1              while(1)
+  96   1              {
+  97   2                      RSTSTAT =  Bin(00000000);       // 喂狗 
+  98   2      
+  99   2                      if(!bSysTick)continue;
+ 100   2                      bSysTick        =       0;
+ 101   2      
+ 102   2                      g_u8SecTick++;
+ 103   2      
+ 104   2                      if(g_u8SecTick>=125)
+ 105   2                      {
+ 106   3                              g_u8SecTick     =       0;
+ 107   3                              bSys_1000MS     =       1;
+ 108   3                      }
+ 109   2      
+ 110   2                      ADCProc();      
+ 111   2                      LCDProc(m_u8SysID);             
+ 112   2                      LedProc();
+ 113   2                      KeyProc();
+ 114   2                      
+ 115   2                      UIProc();
+ 116   2              SoundProc();
+C51 COMPILER V9.52.0.0   MAIN                                                              12/24/2015 16:08:15 PAGE 3   
+
+ 117   2                      ScriptProc();
+ 118   2      
+ 119   2      //              //自检启动
+ 120   2              AutotestActivate();
+ 121   2                      
+ 122   2                      //故障检测
+ 123   2                      FaultCheckProc();
+ 124   2                      
+ 125   2                      //沸腾判断
+ 126   2      //              BoilCheckProc();
+ 127   2      
+ 128   2                      //温度控制
+ 129   2                      KeepTempProc();
+ 130   2                      HeatProc();
+ 131   2      
+ 132   2              bSysPwrOn   =   0;
+ 133   2                      bSys_1000MS     =       0;
+ 134   2              }
+ 135   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     69    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      6    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

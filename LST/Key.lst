@@ -1,0 +1,257 @@
+C51 COMPILER V9.52.0.0   KEY                                                               12/24/2015 16:08:14 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE KEY
+OBJECT MODULE PLACED IN .\OBJ\Key.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE SRC\Key.c BROWSE DEBUG OBJECTEXTEND PRINT(.\LST\Key.lst) OBJECT(.\OBJ\Key.o
+                    -bj)
+
+line level    source
+
+   1          /*-----------------------------*
+   2           *  include head files         *
+   3           *----------------------------*/
+   4          #include ".\Head\HD_cfg.h"
+   5          
+   6          /*-----------------------------*
+   7           *  Macros for constants       *
+   8           *----------------------------*/
+   9          
+  10          /*-----------------------------*
+  11           *  Macros for others          *
+  12           *----------------------------*/
+  13          
+  14          
+  15          /*-----------------------------*
+  16           *  type definitions           *
+  17           *----------------------------*/
+  18          
+  19          
+  20          /*-----------------------------*
+  21           *  structure,union and enum   *
+  22           *----------------------------*/
+  23          
+  24          
+  25          /*-----------------------------*
+  26           *  public functions prototypes*
+  27           *----------------------------*/
+  28          void   KeyProc(void);
+  29          uint16 GetKey(void);
+  30          uint8  IsNewKey(void);
+  31          
+  32          /*-----------------------------*
+  33           *  static functions prototypes*
+  34           *----------------------------*/
+  35          
+  36          /*-----------------------------*
+  37           *  public variable declaration*
+  38           *----------------------------*/
+  39          uint16  m_u16KeyVal;
+  40          uint8   xdata m_u8LidOCDcnt;
+  41          Bool bLidOCDEn; //0:open,1:closed
+  42          /*-----------------------------*
+  43           *  static variable declaration*
+  44           *----------------------------*/
+  45          
+  46          
+  47          /*-----------------------------------------------------------------------------*
+  48            *  Function Description:                                                      *
+  49            *      从IO口上读取键值                                                       *
+  50            *  Parameters:                                                                *
+  51            *      None                                                                   *
+  52            *  Return                                                                     *
+  53            *      键值                                                                   *
+  54            *----------------------------------------------------------------------------*/
+C51 COMPILER V9.52.0.0   KEY                                                               12/24/2015 16:08:14 PAGE 2   
+
+  55          uint16  GetKeyVal(void)
+  56          {
+  57   1          uint8 apk;
+  58   1      
+  59   1          if(bLidOCDEn)
+  60   1          {
+  61   2              //Lid is closed
+  62   2              if(IO_LID_OC==1)    //Open ?
+  63   2              {
+  64   3                  m_u8LidOCDcnt++;
+  65   3                  if(m_u8LidOCDcnt>20)
+  66   3                  {
+  67   4                     m_u8LidOCDcnt = 0;
+  68   4                     bLidOCDEn = 0;   //open yes
+  69   4                  }
+  70   3              }
+  71   2              else
+  72   2              {
+  73   3                  m_u8LidOCDcnt = 0;
+  74   3              }
+  75   2          }
+  76   1          else
+  77   1          {
+  78   2              //Lid is open
+  79   2              if(IO_LID_OC==0)    //closed ?
+  80   2              {
+  81   3                  m_u8LidOCDcnt++;
+  82   3                  if(m_u8LidOCDcnt>20)
+  83   3                  {
+  84   4                      m_u8LidOCDcnt = 0;
+  85   4                      bLidOCDEn = 1;  //closed yes
+  86   4                  }
+  87   3              }
+  88   2              else
+  89   2              {
+  90   3                  m_u8LidOCDcnt = 0;
+  91   3              }
+  92   2          }
+  93   1      
+  94   1          m_u16KeyVal =  0x00;        
+  95   1          i2c_read();
+  96   1          if(bLidOCDEn)
+  97   1          {
+  98   2              apk=(rdat1<<3);
+  99   2              if(rdat2==apk)
+ 100   2              {
+ 101   3                  if(rdat1==1)  m_u16KeyVal |= (1<<0);                //"Reheat"
+ 102   3                  if(rdat1==2)  m_u16KeyVal |= (1<<1);                //"KeepWarm"   
+ 103   3                  if(rdat1==3)  m_u16KeyVal |= (1<<2);                //"Delay"
+ 104   3                  if(rdat1==4)  m_u16KeyVal |= (1<<3);                //"Stop"   
+ 105   3                  if(rdat1==5)  m_u16KeyVal |= (1<<4);                //"Plus"
+ 106   3                  if(rdat1==6)  m_u16KeyVal |= (1<<5);                //"Start"   
+ 107   3                  if(rdat1==7)  m_u16KeyVal |= (1<<6);                //"Minus"
+ 108   3                  if(rdat1==8)  m_u16KeyVal |= (1<<7);                //"Cancel"   
+ 109   3                  if(rdat1==9)  m_u16KeyVal |= (1<<8);                //"DIY"
+ 110   3                  if(rdat1==10) m_u16KeyVal |= (1<<9);            //"Timer"   
+ 111   3                  if(rdat1==11) m_u16KeyVal |= (1<<10);           //"Menu"
+ 112   3              }
+ 113   2          }
+ 114   1              return  m_u16KeyVal;
+ 115   1      }
+ 116          
+C51 COMPILER V9.52.0.0   KEY                                                               12/24/2015 16:08:14 PAGE 3   
+
+ 117          
+ 118          /*                     下面程序可移植                    */
+ 119          
+ 120          /*-----------------------------------------------------------------------------*
+ 121           *  Function Description:                                                      *
+ 122           *      扫键进程,连键时间=(100-95)*8+(100-0)*8+(100-85)*8*(n-2)                *
+ 123           *  Parameters:                                                                *
+ 124           *      None                                                                   *
+ 125           *  Return                                                                     *
+ 126           *      None                                                                   *
+ 127           *----------------------------------------------------------------------------*/
+ 128          uint16  g_u16KeyRpyCnt = 0;     
+ 129          static  uint16  m_u16KeyAct = 0;        
+ 130          uint16  g_u16KeyUpAct = 0;       
+ 131          #define KEY_START_TIME  85; //95
+ 132          #define KEY_RPY_TIME    85
+ 133          #define KEY_END_TIME    100
+ 134          
+ 135          void    KeyProc(void)   
+ 136          {
+ 137   1              static uint8    u8KeyPressCnt   =       0;
+ 138   1              static uint16   u16PrevKey      =       0;
+ 139   1              uint16  u16Key  =       GetKeyVal();    
+ 140   1      
+ 141   1              if(u16Key==u16PrevKey)
+ 142   1              {
+ 143   2                      u8KeyPressCnt++; 
+ 144   2      
+ 145   2                      if(u8KeyPressCnt>KEY_END_TIME)
+ 146   2                      {
+ 147   3                              m_u16KeyAct     =       u16PrevKey;     
+ 148   3                              
+ 149   3                              if(m_u16KeyAct==0)
+ 150   3                              {
+ 151   4                                      bKeyPress       =       0;              
+ 152   4                              }
+ 153   3                              else
+ 154   3                              {
+ 155   4                                      bKeyPress       =       1;      
+ 156   4                              }
+ 157   3                              
+ 158   3                              g_u16KeyRpyCnt++;       
+ 159   3                              if(bFirstPress)
+ 160   3                              {
+ 161   4                                      u8KeyPressCnt   =       0;
+ 162   4                                      bFirstPress             =       0;
+ 163   4                      if((u16Key)&&(bNewKey))
+ 164   4                                      {
+ 165   5                                          g_u16KeyUpAct = m_u16KeyAct;
+ 166   5                          if(bKeyMusic_EN) 
+ 167   5                          {
+ 168   6                              PlaySound(MusicKeyDown);
+ 169   6                          }
+ 170   5                                      }
+ 171   4                              } 
+ 172   3                              else
+ 173   3                              {
+ 174   4                                      u8KeyPressCnt   =       KEY_RPY_TIME;
+ 175   4                              }
+ 176   3                      }
+ 177   2              }
+ 178   1              else
+C51 COMPILER V9.52.0.0   KEY                                                               12/24/2015 16:08:14 PAGE 4   
+
+ 179   1              { 
+ 180   2                      if(!bKeyPress)  
+ 181   2                      {
+ 182   3                              bNewKey         =       1;              
+ 183   3                      }
+ 184   2                      else
+ 185   2                      {
+ 186   3                              bNewKey         =       0;              
+ 187   3                      }
+ 188   2                      m_u16KeyAct             =       0;              
+ 189   2                      g_u16KeyRpyCnt  =       0;                      
+ 190   2                      bFirstPress             =       1;                      
+ 191   2                      u16PrevKey              =       u16Key;                 
+ 192   2                      u8KeyPressCnt   =       KEY_START_TIME;  
+ 193   2              }
+ 194   1      }    
+ 195          
+ 196          /*-----------------------------------------------------------------------------*
+ 197           *  Function Description:                                                      *
+ 198           *      读取键值                                                                   *
+ 199           *  Parameters:                                                                *
+ 200           *      None                                                                   *
+ 201           *  Return                                                                     *
+ 202           *      经过处理后的键值                                                       *
+ 203           *----------------------------------------------------------------------------*/
+ 204          uint16  GetKey(void)
+ 205          {
+ 206   1              uint16  u16Ret  =       m_u16KeyAct;
+ 207   1              m_u16KeyAct     =       0;
+ 208   1              return  u16Ret;
+ 209   1      }
+ 210          
+ 211          /*-----------------------------------------------------------------------------*
+ 212           *  Function Description:                                                      *
+ 213           *      判断是否按下新键                                                       *
+ 214           *  Parameters:                                                                *
+ 215           *      None                                                                   *
+ 216           *  Return                                                                     *
+ 217           *      判断结果                                                                   *
+ 218           *----------------------------------------------------------------------------*/
+ 219          uint8   IsNewKey(void)
+ 220          {
+ 221   1              if(bNewKey)
+ 222   1              {
+ 223   2                      bNewKey =       0;
+ 224   2                      return  TRUE;
+ 225   2              }
+ 226   1              return  FALSE;
+ 227   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    306    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      1    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     11       2
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

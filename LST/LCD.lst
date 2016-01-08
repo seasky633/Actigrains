@@ -1,0 +1,1315 @@
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE LCD
+OBJECT MODULE PLACED IN .\OBJ\LCD.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE SRC\LCD.C BROWSE DEBUG OBJECTEXTEND PRINT(.\LST\LCD.lst) OBJECT(.\OBJ\LCD.o
+                    -bj)
+
+line level    source
+
+   1          /*-----------------------------*
+   2           *  include head files         *
+   3           *----------------------------*/
+   4          #include ".\Head\HD_cfg.h"
+   5          #include ".\head\SinoLib.h"
+   6          
+   7          /*-----------------------------*
+   8           *  public functions prototypes*
+   9           *----------------------------*/
+  10          void    LCD_INIT(void);
+  11          void    LCDDispAll(uint8 mode);
+  12          void    LCDDispMenuNum(uint8 menu,Bool lcdon);
+  13          void    LCDDispTexture(uint8 texture,Bool lcdon);
+  14          void    LCDDispPeopleNum(uint8 count,Bool lcdon);
+  15          void    LCDDispFoodCups(uint16 cups,Bool lcdon);
+  16          void    LCDDispWaterML(uint16 ml,Bool lcdon);
+  17          void    LCDDispCookTemp(uint8 temp,Bool lcdon);
+  18          void    LCDDispCookTime(uint8 *ptime,Bool lcdon);
+  19          void    LCDDispNum_HI(uint8 hdigit);
+  20          void    LCDDispNum_LO(uint8 ldigit);
+  21          void    LCDClearNum(void);
+  22          void    LCDProc(uint8 sysid);
+  23          void    LCDDispError(void);
+  24          void    LCDDispGif(void);
+  25          void    PlayGif(uint16 code *pGif,uint16 speed,uint8 stat);
+  26          void    LCDDispZone1(uint8 menu,uint8 texture,uint8 state);
+  27          void    LCDDispZone2(uint8 people,uint8 state);
+  28          void    LCDDispZone3(uint16 cup,uint16 water,uint8 foodtype,uint8 state);
+  29          void    LCDDispZone4(uint8 diynum,uint8 temp,uint8 *ptime,uint8 state);
+  30          void    LCDDispSelfChk(uint8 step);
+  31          void    LCDDispMovie(uint8 stat);
+  32          
+  33          /*-----------------------------*
+  34           *  static functions prototypes*
+  35           *----------------------------*/
+  36          
+  37          
+  38          /*-----------------------------*
+  39           *  public variable declaration*
+  40           *----------------------------*/
+  41          uint8  bdata    g_u8LCDVal[2];
+  42          sbit bLCD_HealthIcon  = g_u8LCDVal[0]^0;
+  43          sbit bLCD_ClassicIcon = g_u8LCDVal[0]^1;
+  44          sbit bLCD_MenuNum     = g_u8LCDVal[0]^2;
+  45          sbit bLCD_Texture     = g_u8LCDVal[0]^3;
+  46          sbit bLCD_PeopleIcon  = g_u8LCDVal[0]^4; 
+  47          sbit bLCD_PeopleNum   = g_u8LCDVal[0]^5;
+  48          sbit bLCD_TempIcon    = g_u8LCDVal[0]^6;
+  49          sbit bLCD_TimeIcon    = g_u8LCDVal[0]^7;
+  50          
+  51          sbit bLCD_DIYNum1     = g_u8LCDVal[1]^0;
+  52          sbit bLCD_DIYNum2     = g_u8LCDVal[1]^1;
+  53          sbit bLCD_DIYNum3     = g_u8LCDVal[1]^2;
+  54          sbit bLCD_DIYNum4     = g_u8LCDVal[1]^3;
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 2   
+
+  55          sbit bLCD_DIYNum5     = g_u8LCDVal[1]^4;
+  56          sbit bLCD_TempNum     = g_u8LCDVal[1]^5;
+  57          sbit bLCD_TimeNum     = g_u8LCDVal[1]^6;
+  58          sbit bLCD_COL         = g_u8LCDVal[1]^7;
+  59          
+  60          uint8  bdata    g_u8BlankVal[2];        
+  61          sbit bLCD_BNK_HealthIcon  = g_u8BlankVal[0]^0;
+  62          sbit bLCD_BNK_ClassicIcon = g_u8BlankVal[0]^1;
+  63          sbit bLCD_BNK_MenuNum     = g_u8BlankVal[0]^2;
+  64          sbit bLCD_BNK_Texture     = g_u8BlankVal[0]^3;
+  65          sbit bLCD_BNK_PeopleIcon  = g_u8BlankVal[0]^4; 
+  66          sbit bLCD_BNK_PeopleNum   = g_u8BlankVal[0]^5;
+  67          sbit bLCD_BNK_TempIcon    = g_u8BlankVal[0]^6;
+  68          sbit bLCD_BNK_TimeIcon    = g_u8BlankVal[0]^7;
+  69          
+  70          sbit bLCD_BNK_DIYNum1     = g_u8BlankVal[1]^0;
+  71          sbit bLCD_BNK_DIYNum2     = g_u8BlankVal[1]^1;
+  72          sbit bLCD_BNK_DIYNum3     = g_u8BlankVal[1]^2;
+  73          sbit bLCD_BNK_DIYNum4     = g_u8BlankVal[1]^3;
+  74          sbit bLCD_BNK_DIYNum5     = g_u8BlankVal[1]^4;
+  75          sbit bLCD_BNK_TempNum     = g_u8BlankVal[1]^5;
+  76          sbit bLCD_BNK_TimeNum     = g_u8BlankVal[1]^6;
+  77          sbit bLCD_BNK_COL         = g_u8BlankVal[1]^7;
+  78          
+  79          uint8   xdata   SEG[28] _at_ 0x500;
+  80          uint8   xdata   LCD_Buf[28];
+  81          uint8   u8BlankCnt;
+  82          uint8   u8lcdcnt ;
+  83          DispParam idata dpParam;
+  84          uint8   u8GifCnt;
+  85          uint8   idata u8GifSpeed;
+  86          uint8   xdata m_u8Framestat;       //Ðý×ª·½¿ò×´Ì¬£¬0x00:Çå³ýÓë¶¯»­ÎÞ¹ØµÄ²¿·Ö 0x01:È«Çå 0x02:Ðý×ª other:È«Ï
+             -Ô
+  87          uint16  code *m_u16pGif = NULL;
+  88          uint16  code *m_u16pGifBak =  NULL;             
+  89          uint8   code LCD_TAB[] = 
+  90          {
+  91                  Num0,Num1,Num2,Num3,Num4,Num5,Num6,Num7,
+  92                  Num8,Num9,Numa,Numb,Numu,Numt,Nume,Numf
+  93          };
+  94          
+  95          uint8   code LCD_TABX[] = 
+  96          {
+  97                  Num0x,Num1x,Num2x,Num3x,Num4x,Num5x,Num6x,Num7x,Num8x,Num9x
+  98          };
+  99          
+ 100          uint8   code LCD_TABY[] = 
+ 101          {
+ 102                  Num0y,Num1y,Num2y,Num3y,Num4y,Num5y,Num6y,Num7y,Num8y,Num9y
+ 103          };
+ 104          //ìÒÌå(´øÀº×Ó)
+ 105          uint16  code GifCookerBSK[] = {GIF_Cooker_BSK_S1,0};
+ 106          //ìÒÌå(²»´øÀº×Ó)
+ 107          uint16  code GifCookerNBSK[] = {GIF_Cooker_NBSK_S1,0};
+ 108          //ìÒÌå(²»´øÀº×Ó)(²»´øÉÏ¸Ç)
+ 109          uint16  code GifCookerNBSKNLID[] = {GIF_Cooker_NBSK_NLID_S1,0};
+ 110          //·ÅÈëÊ³Îï(´øÀº×Ó)
+ 111          uint16  code GifFoodBSK[] = {GIF_Food_BSK_S1,GIF_Food_BSK_S2,GIF_Food_BSK_S3,0xffff};
+ 112          //·ÅÈëÊ³Îï(²»´øÀº×Ó)
+ 113          uint16  code GifFoodNBSK[] = {GIF_Food_NBSK_S1,GIF_Food_NBSK_S2,GIF_Food_NBSK_S3,GIF_Food_NBSK_S4,0xffff};
+ 114          //·ÅÈëË®(´øÀº×Ó)
+ 115          uint16  code GifWaterBSK[] = {GIF_Water_BSK_S1,GIF_Water_BSK_S2,GIF_Water_BSK_S3,0xffff};
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 3   
+
+ 116          //·ÅÈëË®(²»´øÀº×Ó)
+ 117          uint16  code GifWaterNBSK[] = {GIF_Water_NBSK_S1,GIF_Water_NBSK_S2,GIF_Water_NBSK_S3,GIF_Water_NBSK_S4,0xf
+             -fff};
+ 118          //·ÅÈëÀº×Ó
+ 119          uint16  code GifPutbasket[] = {GIF_Putbasket_S1,GIF_Putbasket_S2,GIF_Putbasket_S3,0xffff};
+ 120          //È¡³öÊ³Îï(´øÀº×Ó)
+ 121          uint16  code GifOutfood[] = {GIF_Outfood_S1,GIF_Outfood_S2,GIF_Outfood_S3,GIF_Outwater_S1,GIF_Outwater_S2,
+             -GIF_Outwater_S3,0xffff};
+ 122          //µ¹³öË®
+ 123          uint16  code GifOutwater[] = {GIF_Outwater_S1,GIF_Outwater_S2,GIF_Outwater_S3,0xffff};
+ 124          //·ÅÈëÂËË®ºóµÄÊ³Îï(´øÀº×Ó)
+ 125          uint16  code GifDrainedfoodBSK[] = {GIF_Drainedfood_BSK_S1,GIF_Drainedfood_BSK_S2,GIF_Drainedfood_BSK_S3,0
+             -xffff};
+ 126          //·ÅÈëÂËË®ºóµÄÊ³Îï(²»´øÀº×Ó)
+ 127          uint16  code GifDrainedfoodNBSK[] = {GIF_Drainedfood_NBSK_S1,GIF_Drainedfood_NBSK_S2,GIF_Drainedfood_NBSK_
+             -S3,0xffff};
+ 128          /*-----------------------------*
+ 129           *  static variable declaration*
+ 130           *----------------------------*/
+ 131          
+ 132          
+ 133          
+ 134          
+ 135          
+ 136          
+ 137          /*-----------------------------------------------------------------------------*
+ 138           *  Function Description:                                                      *
+ 139           *      Initialize the LCD.                                                    *
+ 140           *  Parameters:                                                                *
+ 141           *      None                                                                   *
+ 142           *  Return                                                                     *
+ 143           *      None                                                                   *
+ 144           *----------------------------------------------------------------------------*/
+ 145          void LCD_INIT(void)
+ 146          {
+ 147   1              uint8   i;
+ 148   1      
+ 149   1          //Ê¹ÄÜLCDÄ£¿é
+ 150   1              DISPCON  =      Bin(00111111);          // Ñ¡ÔñLCDÇý¶¯Æ÷£¬Vlcd=1.000Vdd£¬1/8Õ¼¿Õ±È£¬1/4Æ«ÖÃ
+ 151   1              DISPCON1 =  Bin(00000001);      // Æ«ÖÃµç×è×ÜºÍ60K
+ 152   1          DISPCLK0 =  Bin(00000000);      // LCDÊ±ÖÓÆµÂÊ = 32.768Khz(Ö¡Æµ64hz)        
+ 153   1              DISPCON |=      Bin(01000000);          // Ê¹ÄÜLCDÄ£¿é
+ 154   1      
+ 155   1              //ÏÔÊ¾ÄÚÈÝ³õÊ¼»¯
+ 156   1          for(i=0;i<VBUF_SIZE;i++)                            // LCD RAMÈ«²¿ÇåÁã
+ 157   1              {
+ 158   2                      SEG[i] = Bin(00000000);
+ 159   2                      LCD_Buf[i] = Bin(00000000);
+ 160   2              }
+ 161   1      }
+ 162          
+ 163          
+ 164          /*-----------------------------------------------------------------------------*
+ 165           *  Function Description:                                                      *
+ 166           *      ALL LEDÏÔÊ¾Ä£Ê½                                                        *
+ 167           *  Parameters:                                                                *
+ 168           *      None                                                                   *
+ 169           *  Return                                                                     *
+ 170           *      None                                                                   *
+ 171           *----------------------------------------------------------------------------*/
+ 172          void    LCDDispAll(uint8 mode)
+ 173          {       
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 4   
+
+ 174   1              uint8   i;
+ 175   1                              
+ 176   1              for(i=0;i<VBUF_SIZE;i++)
+ 177   1              {
+ 178   2                      if(mode>0)
+ 179   2                      {
+ 180   3                              LCD_Buf[i] = Bin(11111111);
+ 181   3                      }
+ 182   2                      else
+ 183   2                      {
+ 184   3                              LCD_Buf[i] = Bin(00000000);
+ 185   3                      }
+ 186   2              }
+ 187   1      }       
+ 188          
+ 189          /*-----------------------------------------------------------------------------*
+ 190           *  Function Description:                                                      *
+ 191           *      ÏÔÊ¾²Ëµ¥ºÅ(P1-P8,01-12)                                                *
+ 192           *  Parameters:                                                                *
+ 193           *      menu,lcdon                                                             *
+ 194           *  Return                                                                     *
+ 195           *      None                                                                   *
+ 196           *----------------------------------------------------------------------------*/
+ 197          void    LCDDispMenuNum(uint8 menu,Bool lcdon)
+ 198          {
+ 199   1          uint8 i,j;
+ 200   1          
+ 201   1          LCD_Buf[10] = 0x00;             //MenuNumµÍÎ»
+ 202   1          LCD_Buf[11] = 0x00;             //MenuNum¸ßÎ»
+ 203   1      
+ 204   1          if(lcdon)
+ 205   1          {
+ 206   2              if(menu<9)
+ 207   2              {
+ 208   3                  LCD_Buf[10] = LCD_TAB[menu];    //ÏÔÊ¾MenuNumµÍÎ»
+ 209   3                  LCD_Buf[11] = LCD_TAB[0];       //¸ßÎ»ÏÔÊ¾"0"
+ 210   3              }
+ 211   2              else
+ 212   2              {
+ 213   3                  if(menu<22)
+ 214   3                  {
+ 215   4                      if(menu==9)                 //chickpeas
+ 216   4                      {
+ 217   5                          LCD_Buf[10] = LCD_TAB[0];  
+ 218   5                          LCD_Buf[11] = LCD_TAB[0];       //¸ßÎ»ÏÔÊ¾"0"
+ 219   5                      }
+ 220   4                      else
+ 221   4                      {
+ 222   5                          i = LOBYTE(HEX8toBCD(menu-1));
+ 223   5                          j = i & 0x0f;
+ 224   5                          LCD_Buf[10] = LCD_TAB[j];           //ÏÔÊ¾MenuNumµÍÎ»
+ 225   5                          j = (i>>4) & 0x0f;
+ 226   5                          LCD_Buf[11] = LCD_TAB[j];           //ÏÔÊ¾MenuNum¸ßÎ»
+ 227   5                      }
+ 228   4                  }
+ 229   3              }
+ 230   2          }
+ 231   1      }
+ 232          
+ 233          /*-----------------------------------------------------------------------------*
+ 234           *  Function Description:                                                      *
+ 235           *      ÏÔÊ¾¿Ú¸Ð(Nutri,Quick,Normal,Soft)                                      *
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 5   
+
+ 236           *  Parameters:                                                                *
+ 237           *      texture,lcdon                                                          *
+ 238           *  Return                                                                     *
+ 239           *      None                                                                   *
+ 240           *----------------------------------------------------------------------------*/
+ 241          void    LCDDispTexture(uint8 texture, Bool lcdon)
+ 242          {
+ 243   1          LCD_Buf[3] &= Bin(11100001);    //Çå³ý¿Ú¸ÐÏÔÊ¾
+ 244   1      
+ 245   1          if(lcdon)
+ 246   1          {
+ 247   2              switch(texture)
+ 248   2              {
+ 249   3                  case    1:              //nutritious
+ 250   3                      LCD_Buf[3] |= Bin(00011110);
+ 251   3                      break;
+ 252   3                  case    2:              //quick
+ 253   3                      LCD_Buf[3] |= Bin(00001110);
+ 254   3                      break;
+ 255   3                  case    3:              //normal
+ 256   3                      LCD_Buf[3] |= Bin(00000110);
+ 257   3                      break;
+ 258   3                  case    4:              //soft
+ 259   3                      LCD_Buf[3] |= Bin(00000010);
+ 260   3                      break;
+ 261   3                  default:
+ 262   3                      break;
+ 263   3              }
+ 264   2          }
+ 265   1      }
+ 266          
+ 267          /*-----------------------------------------------------------------------------*
+ 268           *  Function Description:                                                      *
+ 269           *      ÏÔÊ¾ÈËÊý(2-12)                                                         *
+ 270           *  Parameters:                                                                *
+ 271           *      count,lcdon                                                            *
+ 272           *  Return                                                                     *
+ 273           *      None                                                                   *
+ 274           *----------------------------------------------------------------------------*/
+ 275          void    LCDDispPeopleNum(uint8 count,Bool lcdon)
+ 276          {
+ 277   1           uint8 i;
+ 278   1           
+ 279   1           LCD_Buf[9] &= Bin(10000000);             //PeopleNumµÍÎ»
+ 280   1           LCD_Buf[4] &= Bin(11111011);             //PeopleNum¸ßÎ»
+ 281   1      
+ 282   1          if(lcdon)
+ 283   1          {
+ 284   2              if(count>0)
+ 285   2              {
+ 286   3                  if(count<10)
+ 287   3                  {
+ 288   4                      i = count;
+ 289   4                  }
+ 290   3                  else
+ 291   3                  {
+ 292   4                      LCD_Buf[4] |= 0x04;      //ÏÔÊ¾PeopleNum¸ßÎ»
+ 293   4                      i = count - 10;
+ 294   4                  }
+ 295   3      
+ 296   3                  LCD_Buf[9] |= LCD_TABY[i];   //ÏÔÊ¾PeopleNumµÍÎ»
+ 297   3              }
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 6   
+
+ 298   2          }
+ 299   1      }
+ 300          
+ 301          /*-----------------------------------------------------------------------------*
+ 302           *  Function Description:                                                      *
+ 303           *      ÏÔÊ¾ÐèÒª·ÅÈëµÄÊ³ÎïÁ¿                                                   *
+ 304           *  Parameters:                                                                *
+ 305           *      cups,lcdon                                                             *
+ 306           *  Return                                                                     *
+ 307           *      None                                                                   *
+ 308           *----------------------------------------------------------------------------*/
+ 309          void    LCDDispFoodCups(uint16 cups,Bool lcdon)
+ 310          {
+ 311   1          uint8 i;
+ 312   1          
+ 313   1          LCD_Buf[18] &= 0x0f;    //D5
+ 314   1          LCD_Buf[17] &= 0x0f;
+ 315   1          LCD_Buf[16] &= 0x0f;    //D6
+ 316   1          LCD_Buf[15] &= 0x0f;
+ 317   1          LCD_Buf[14] &= 0x0f;    //D7
+ 318   1          LCD_Buf[13] &= 0x0f;
+ 319   1      
+ 320   1          if(lcdon)
+ 321   1          {
+ 322   2              i = ((uint8)cups) & 0x0f;
+ 323   2              LCD_Buf[13] |= LCD_TABX[i] & 0xf0;      //D7(A/B/C/D)
+ 324   2              LCD_Buf[14] |= (LCD_TABX[i]<<4) & 0xf0; //D7(F/G/E)
+ 325   2      
+ 326   2              i = ((uint8)cups>>4) & 0x0f;
+ 327   2              LCD_Buf[15] |= LCD_TABX[i] & 0xf0;      //D6(A/B/C/D)
+ 328   2              LCD_Buf[16] |= (LCD_TABX[i]<<4) & 0xf0; //D6(F/G/E)
+ 329   2      
+ 330   2              i = (uint8)(cups>>8) & 0x0f;
+ 331   2              LCD_Buf[17] |= LCD_TABX[i] & 0xf0;      //D5(A/B/C/D)
+ 332   2              LCD_Buf[18] |= (LCD_TABX[i]<<4) & 0xf0; //D5(F/G/E)
+ 333   2      
+ 334   2              LCD_Buf[16] |= 0x10;                    //P1
+ 335   2          }
+ 336   1      }
+ 337          
+ 338          
+ 339          /*-----------------------------------------------------------------------------*
+ 340           *  Function Description:                                                      *
+ 341           *      ÏÔÊ¾ÐèÒª·ÅÈëµÄË®Á¿                                                     *
+ 342           *  Parameters:                                                                *
+ 343           *      ml,lcdon                                                               *
+ 344           *  Return                                                                     *
+ 345           *      None                                                                   *
+ 346           *----------------------------------------------------------------------------*/
+ 347          void    LCDDispWaterML(uint16 ml,Bool lcdon)
+ 348          {
+ 349   1          uint8 i;
+ 350   1      
+ 351   1          LCD_Buf[18] &= 0xf0;    //D8
+ 352   1          LCD_Buf[17] &= 0xf0;    
+ 353   1          LCD_Buf[16] &= 0xf0;    //D9
+ 354   1          LCD_Buf[15] &= 0xf0;
+ 355   1          LCD_Buf[14] &= 0xf0;    //D10
+ 356   1          LCD_Buf[13] &= 0xf0;
+ 357   1          LCD_Buf[12] &= 0xf0;    //D11
+ 358   1          LCD_Buf[0]  &= 0xf1;
+ 359   1      
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 7   
+
+ 360   1          if(lcdon)
+ 361   1          {
+ 362   2              i = ((uint8)ml) & 0x0f;
+ 363   2              LCD_Buf[0]  |= LCD_TABX[i] & 0x0e;      //D11(F/G/E)
+ 364   2              LCD_Buf[12] |= (LCD_TABX[i]>>4) & 0x0f; //D11(A/B/C/D)
+ 365   2      
+ 366   2              i = ((uint8)ml>>4) & 0x0f;
+ 367   2              LCD_Buf[14] |= LCD_TABX[i] & 0x0f;      //D10(F/G/E)
+ 368   2              LCD_Buf[13] |= (LCD_TABX[i]>>4) & 0x0f; //D10(A/B/C/D)
+ 369   2      
+ 370   2              i = (uint8)(ml>>8) & 0x0f;
+ 371   2              LCD_Buf[16] |= LCD_TABX[i] & 0x0f;      //D9(F/G/E)
+ 372   2              LCD_Buf[15] |= (LCD_TABX[i]>>4) & 0x0f; //D9(A/B/C/D)
+ 373   2              
+ 374   2              i = (uint8)(ml>>12) & 0x0f;
+ 375   2              if(i>0)
+ 376   2              {
+ 377   3                  LCD_Buf[18] |= LCD_TABX[i] & 0x0f;      //D8(F/G/E)
+ 378   3                  LCD_Buf[17] |= (LCD_TABX[i]>>4) & 0x0f; //D8(A/B/C/D)
+ 379   3              }
+ 380   2          }
+ 381   1      }
+ 382              
+ 383          
+ 384          /*-----------------------------------------------------------------------------*
+ 385           *  Function Description:                                                      *
+ 386           *      ÏÔÊ¾ÉèÖÃµÄÅëâ¿ÎÂ¶È                                                     *
+ 387           *  Parameters:                                                                *
+ 388           *      temp,lcdon                                                             *
+ 389           *  Return                                                                     *
+ 390           *      None                                                                   *
+ 391           *----------------------------------------------------------------------------*/
+ 392          void    LCDDispCookTemp(uint8 temp,Bool lcdon)
+ 393          {
+ 394   1          uint8 i,j;
+ 395   1          
+ 396   1          LCD_Buf[23] = 0;
+ 397   1          LCD_Buf[22] &= 0x01;
+ 398   1      
+ 399   1          if(lcdon)
+ 400   1          {
+ 401   2              if(temp>0)
+ 402   2              {
+ 403   3                  i = LOBYTE(HEX8toBCD(temp));                        //ÏÔÊ¾ÎÂ¶ÈµÍ¶þÎ»
+ 404   3                  j = i & 0x0f;
+ 405   3                  LCD_Buf[22] |= LCD_TAB[j] & 0xfe;       //D13
+ 406   3                  j = (i>>4) & 0x0f;
+ 407   3                  LCD_Buf[23] |= LCD_TAB[j] & 0xfe;       //D12
+ 408   3      
+ 409   3                  if(temp>=100)
+ 410   3                  {
+ 411   4                    LCD_Buf[23] |= 0x01;                  //ÏÔÊ¾ÎÂ¶È¸ßÎ»
+ 412   4                  }
+ 413   3              }
+ 414   2          }
+ 415   1      }
+ 416          
+ 417          /*-----------------------------------------------------------------------------*
+ 418           *  Function Description:                                                      *
+ 419           *      ÏÔÊ¾ÉèÖÃµÄÅëâ¿Ê±¼ä                                                     *
+ 420           *  Parameters:                                                                *
+ 421           *      *ptime,lcdon                                                           *
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 8   
+
+ 422           *  Return                                                                     *
+ 423           *      None                                                                   *
+ 424           *----------------------------------------------------------------------------*/
+ 425          void    LCDDispCookTime(uint8 *pTime,Bool lcdon)
+ 426          {
+ 427   1          uint8       i;
+ 428   1          
+ 429   1          LCDClearNum();
+ 430   1          
+ 431   1          if(lcdon)
+ 432   1          {
+ 433   2              if((pTime[0]==0xff)&&(pTime[1]==0xff))
+ 434   2                      {
+ 435   3                              LCDDispNum_LO(0xd0);  
+ 436   3                              LCDDispNum_HI(0xac);
+ 437   3                      }
+ 438   2              else
+ 439   2              {
+ 440   3                  i = LOBYTE(HEX8toBCD(pTime[0]));
+ 441   3                  LCDDispNum_LO(i);                           //ÏÔÊ¾·ÖÖÓ
+ 442   3      
+ 443   3                  i = LOBYTE(HEX8toBCD(pTime[1]));
+ 444   3                  LCDDispNum_HI(i);                           //ÏÔÊ¾Ð¡Ê±
+ 445   3              }
+ 446   2          }
+ 447   1      }
+ 448          
+ 449          /*-----------------------------------------------------------------------------*
+ 450           *  Function Description:                                                      *
+ 451           *      ÏÔÊ¾Êý×Ö¸ßÁ½Î»D14-D15                                                  *
+ 452           *  Parameters:                                                                *
+ 453           *      hdigit                                                                 *
+ 454           *  Return                                                                     *
+ 455           *      None                                                                   *
+ 456           *----------------------------------------------------------------------------*/
+ 457          void    LCDDispNum_HI(uint8 hdigit)
+ 458          {
+ 459   1              uint8   i;
+ 460   1      
+ 461   1          LCD_Buf[21] &= 0x01;                //ÇåD14-D15»º³åÆ÷
+ 462   1          LCD_Buf[20] &= 0x01;
+ 463   1      
+ 464   1          i = hdigit & 0x0f;                  //D15
+ 465   1          LCD_Buf[20] |= LCD_TAB[i] & 0xfe;                           
+ 466   1              
+ 467   1              i =     (hdigit>>4) & 0x0f;             //D14
+ 468   1              LCD_Buf[21] |=  LCD_TAB[i] & 0xfe;
+ 469   1      }
+ 470          
+ 471          /*-----------------------------------------------------------------------------*
+ 472           *  Function Description:                                                      *
+ 473           *      ÏÔÊ¾Êý×ÖµÍÁ½Î»D16-D17                                                  *
+ 474           *  Parameters:                                                                *
+ 475           *      ldigit                                                                 *
+ 476           *  Return                                                                     *
+ 477           *      None                                                                   *
+ 478           *----------------------------------------------------------------------------*/
+ 479          void    LCDDispNum_LO(uint8     ldigit)
+ 480          {
+ 481   1              uint8   i;
+ 482   1      
+ 483   1          LCD_Buf[19] &= 0x01;                 //ÇåD16-D17»º³åÇø
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 9   
+
+ 484   1          LCD_Buf[1] &= 0x01;         
+ 485   1      
+ 486   1          i = ldigit & 0x0f;                  //D17
+ 487   1          LCD_Buf[1] |= LCD_TAB[i] & 0xfe;
+ 488   1      
+ 489   1          i = (ldigit>>4) & 0x0f;             //D16
+ 490   1          LCD_Buf[19] |= LCD_TAB[i] &0xfe;                            
+ 491   1      }
+ 492          
+ 493          /*-----------------------------------------------------------------------------*
+ 494           *  Function Description:                                                      *
+ 495           *      Çå³ýÊý×ÖÏÔÊ¾                                                           *
+ 496           *  Parameters:                                                                *
+ 497           *      None                                                                   *
+ 498           *  Return                                                                     *
+ 499           *      None                                                                   *
+ 500           *----------------------------------------------------------------------------*/
+ 501          void    LCDClearNum(void)
+ 502          {       
+ 503   1          LCD_Buf[21] &= 0x01;                //ÇåD14-D15»º³åÆ÷
+ 504   1          LCD_Buf[20] &= 0x01;
+ 505   1          LCD_Buf[19] &= 0x01;                //ÇåD16-D17»º³åÇø
+ 506   1          LCD_Buf[1] &= 0x01;  
+ 507   1      }
+ 508          
+ 509          /*-----------------------------------------------------------------------------*
+ 510           *  Function Description:                                                      *
+ 511           *      ±¨¾¯ÏÔÊ¾                                                                                   *
+ 512           *  Parameters:                                                                *
+ 513           *      None                                                                   *
+ 514           *  Return                                                                     *
+ 515           *      None                                                                   *
+ 516           *----------------------------------------------------------------------------*/
+ 517          void    LCDDispError(void)
+ 518          {
+ 519   1          LCDDispAll(0);
+ 520   1          g_u8LCDVal[0] = 0;
+ 521   1          g_u8LCDVal[1] = 0;
+ 522   1          g_u8BlankVal[0] = 0;
+ 523   1          g_u8BlankVal[1] = 0;
+ 524   1          
+ 525   1              if(bTopSensorErr)                       //ÏÔÊ¾E0-¶¥²¿´«¸ÐÆ÷¿ªÂ·»ò¶ÌÂ·
+ 526   1              {
+ 527   2                      LCDDispNum_LO(0xe0);
+ 528   2                      return;
+ 529   2              }
+ 530   1      
+ 531   1              if(bBotSensorErr)                       //ÏÔÊ¾E1-µ×²¿´«¸ÐÆ÷¿ªÂ·»ò¶ÌÂ·
+ 532   1              {
+ 533   2                      LCDDispNum_LO(0xe1);
+ 534   2                      return;
+ 535   2              }
+ 536   1      
+ 537   1              if(bPanOverTempErr)                     //ÏÔÊ¾E3-¹øµ×ÎÂ¶È¹ý¸ß
+ 538   1              {
+ 539   2                      LCDDispNum_LO(0xe3);
+ 540   2                      return;
+ 541   2              }       
+ 542   1      }
+ 543          
+ 544          /*-----------------------------------------------------------------------------*
+ 545           *  Function Description:                                                      *
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 10  
+
+ 546           *      ¿ØÖÆZone1ÏÔÊ¾ÄÚÈÝ                                                                  *
+ 547           *  Parameters:                                                                *
+ 548           *      menu,texture,state                                                     *
+ 549           *  Return                                                                     *
+ 550           *      None                                                                   *
+ 551           *----------------------------------------------------------------------------*/
+ 552          void    LCDDispZone1(uint8 menu,uint8 texture,uint8 state)
+ 553          {
+ 554   1          g_u8LCDVal[0] &= 0xf0;
+ 555   1          g_u8BlankVal[0] &= 0xf0;
+ 556   1          LCD_Buf[3] |= 0x81;            //ÏÔÊ¾ZONE1Íâ¿ò
+ 557   1              
+ 558   1          switch(state)
+ 559   1          {
+ 560   2              case    ZONE1_STAT_ALLOFF:
+ 561   2                  LCD_Buf[3] &= 0x7e;    //¹ØZONE1Íâ¿ò
+ 562   2                  break;
+ 563   2              case    ZONE1_STAT_NUTRIMENU_SELECT:
+ 564   2                  bLCD_HealthIcon = 1;
+ 565   2                  bLCD_BNK_HealthIcon = 1;
+ 566   2                  bLCD_MenuNum = 1;
+ 567   2                  bLCD_BNK_MenuNum = 1;
+ 568   2                  dpParam.u8Menu = menu;
+ 569   2                  break;
+ 570   2              case    ZONE1_STAT_CLASSICMENU_SELECT:
+ 571   2                  bLCD_ClassicIcon = 1;
+ 572   2                  bLCD_BNK_ClassicIcon = 1;
+ 573   2                  bLCD_MenuNum = 1;
+ 574   2                  bLCD_BNK_MenuNum = 1;
+ 575   2                  dpParam.u8Menu = menu;
+ 576   2                  break;
+ 577   2              case    ZONE1_STAT_TEXTURE_SELECT:
+ 578   2                  if(menu<=9) bLCD_HealthIcon = 1;
+ 579   2                  else bLCD_ClassicIcon = 1;               
+ 580   2                  bLCD_MenuNum = 1;
+ 581   2                  dpParam.u8Menu = menu;
+ 582   2                  bLCD_Texture = 1;
+ 583   2                  bLCD_BNK_Texture = 1;
+ 584   2                  dpParam.u8texture = texture;
+ 585   2                  break;
+ 586   2              case    ZONE1_STAT_TEXTURE_CONFIRM:
+ 587   2                  if((menu==22)||(menu==23))
+ 588   2                  {
+ 589   3                      LCD_Buf[3] &= 0x7e;    //¹ØZONE1Íâ¿ò
+ 590   3                  }
+ 591   2                  else
+ 592   2                  {
+ 593   3                      if(menu<=9) bLCD_HealthIcon = 1;
+ 594   3                      else bLCD_ClassicIcon = 1; 
+ 595   3                      bLCD_MenuNum = 1;
+ 596   3                      dpParam.u8Menu = menu;
+ 597   3                      bLCD_Texture = 1;
+ 598   3                      dpParam.u8texture = texture;
+ 599   3                  }
+ 600   2                  break;
+ 601   2              default:
+ 602   2                  break;
+ 603   2          }
+ 604   1      }
+ 605          
+ 606          /*-----------------------------------------------------------------------------*
+ 607           *  Function Description:                                                      *
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 11  
+
+ 608           *      ¿ØÖÆZone2ÏÔÊ¾ÄÚÈÝ                                                                  *
+ 609           *  Parameters:                                                                *
+ 610           *      people ,state                                                          *
+ 611           *  Return                                                                     *
+ 612           *      None                                                                   *
+ 613           *----------------------------------------------------------------------------*/
+ 614          void    LCDDispZone2(uint8 people,uint8 state)
+ 615          {
+ 616   1          g_u8LCDVal[0] &= 0xcf;
+ 617   1          g_u8BlankVal[0] &= 0xcf;
+ 618   1          LCD_Buf[4] |= 0x01;             //ÏÔÊ¾zone2Íâ¿ò Y7
+ 619   1          LCD_Buf[9] |= 0x80;             //Y8
+ 620   1          
+ 621   1          switch(state)
+ 622   1          {
+ 623   2              case    ZONE2_STAT_ALLOFF:
+ 624   2                  LCD_Buf[4] &= 0xfe;     //¹Øzone2Íâ¿ò    
+ 625   2                  LCD_Buf[9] &= 0x7f;
+ 626   2                  break;
+ 627   2              case    ZONE2_STAT_PEOPLENUM_SELECT:
+ 628   2                  if(people>0)
+ 629   2                  {    
+ 630   3                      bLCD_PeopleIcon = 1;
+ 631   3                      bLCD_BNK_PeopleIcon = 1;
+ 632   3                      bLCD_PeopleNum = 1;
+ 633   3                      bLCD_BNK_PeopleNum = 1;
+ 634   3                      dpParam.u8People = people;
+ 635   3                  }
+ 636   2                  else
+ 637   2                  {
+ 638   3                      LCD_Buf[4] &= 0xfe;     //¹Øzone2Íâ¿ò    
+ 639   3                      LCD_Buf[9] &= 0x7f;
+ 640   3                  }
+ 641   2                  break;
+ 642   2              case    ZONE2_STAT_PEOPLENUM_CONFIRM:
+ 643   2                  if(people>0)
+ 644   2                  {
+ 645   3                      bLCD_PeopleIcon = 1;
+ 646   3                      bLCD_PeopleNum = 1;
+ 647   3                      dpParam.u8People = people;
+ 648   3                  }
+ 649   2                  else
+ 650   2                  {
+ 651   3                      LCD_Buf[4] &= 0xfe;     //¹Øzone2Íâ¿ò    
+ 652   3                      LCD_Buf[9] &= 0x7f;
+ 653   3                  }
+ 654   2                  break;
+ 655   2              default:
+ 656   2                  break;
+ 657   2          }
+ 658   1      }
+ 659          
+ 660          /*-----------------------------------------------------------------------------*
+ 661           *  Function Description:                                                      *
+ 662           *      ¿ØÖÆZone3ÏÔÊ¾ÄÚÈÝ                                                                  *
+ 663           *  Parameters:                                                                *
+ 664           *      cup,water,foodtype,state                                               *
+ 665           *  Return                                                                     *
+ 666           *      None                                                                   *
+ 667           *----------------------------------------------------------------------------*/
+ 668          void    LCDDispZone3(uint16 cup,uint16 water,uint8 foodtype,uint8 state)
+ 669          {
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 12  
+
+ 670   1          LCD_Buf[0] |= 0x81;             //ÏÔÊ¾zone3Íâ¿ò
+ 671   1          LCD_Buf[0] &= 0x8f;             //s8 s9 =0
+ 672   1          LCD_Buf[12] &= 0x0f;            //s10 s11 s12 s13 =0
+ 673   1          
+ 674   1          switch(state)
+ 675   1          {
+ 676   2              case    ZONE3_STAT_ALLOFF:
+ 677   2                  LCD_Buf[0] &= 0x7e;     //¹Øzone3Íâ¿ò
+ 678   2                  LCDDispFoodCups(cup,0);
+ 679   2                  LCDDispWaterML(water,0);
+ 680   2                  if(foodtype>0)
+ 681   2                  {
+ 682   3                      if(foodtype==1) LCD_Buf[12] |= 0x40; //s11 = 1
+ 683   3                      if(foodtype==2) LCD_Buf[12] |= 0x20; //s12 = 1
+ 684   3                  }
+ 685   2                  break;
+ 686   2              case    ZONE3_STAT_PUTFOOD:
+ 687   2                  LCD_Buf[0] |= 0x40;     //s8 =1
+ 688   2                  LCD_Buf[12] |= 0x80;    //s10 = 1
+ 689   2                  if(foodtype==1) LCD_Buf[12] |= 0x40; //s11 = 1
+ 690   2                  if(foodtype==2) LCD_Buf[12] |= 0x20; //s12 = 1
+ 691   2                  LCDDispFoodCups(cup,1);
+ 692   2                  LCDDispWaterML(water,0);
+ 693   2                  break;
+ 694   2              case    ZONE3_STAT_PUTWATER:
+ 695   2                  LCD_Buf[0] |= 0x20;     //s9 =1
+ 696   2                  LCD_Buf[12] |= 0x10;    //s13 = 1
+ 697   2                  if(foodtype==1) LCD_Buf[12] |= 0x40; //s11 = 1
+ 698   2                  if(foodtype==2) LCD_Buf[12] |= 0x20; //s12 = 1
+ 699   2                  LCDDispFoodCups(cup,0);
+ 700   2                  LCDDispWaterML(water,1);
+ 701   2                  break;
+ 702   2              case    ZONE3_STAT_DEBUG:
+ 703   2                  #ifdef  DEBUG0
+ 704   2                  LCDDispFoodCups(cup,1);
+ 705   2                  LCDDispWaterML(water,1);
+ 706   2                  #endif
+ 707   2                  break;
+ 708   2              default:
+ 709   2                  break;
+ 710   2          }
+ 711   1      }
+ 712          
+ 713          /*-----------------------------------------------------------------------------*
+ 714           *  Function Description:                                                      *
+ 715           *      ¿ØÖÆZone4ÏÔÊ¾ÄÚÈÝ                                                                  *
+ 716           *  Parameters:                                                                *
+ 717           *      diynum,temp,*ptime,state                                               *
+ 718           *  Return                                                                     *
+ 719           *      None                                                                   *
+ 720           *----------------------------------------------------------------------------*/    
+ 721          void    LCDDispZone4(uint8 diynum,uint8 temp,uint8 *ptime,uint8 state)
+ 722          {
+ 723   1          g_u8LCDVal[0] &= 0x3f;
+ 724   1          g_u8BlankVal[0] &= 0x3f;
+ 725   1          g_u8LCDVal[1] = 0;
+ 726   1          g_u8BlankVal[1] = 0;
+ 727   1          LCD_Buf[2] |= 0x80;             //ÏÔÊ¾zone4Íâ¿ò Y5
+ 728   1          LCD_Buf[22] |= 0x01;            //Y6
+ 729   1          LCD_Buf[21] &= 0xfe;            //s21 = 0
+ 730   1          LCD_Buf[20] &= 0xfe;            //s22 = 0
+ 731   1          LCD_Buf[1] &= 0xfe;             //s23 = 0
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 13  
+
+ 732   1          
+ 733   1          if(diynum>0)
+ 734   1          {
+ 735   2              if(diynum==1) bLCD_DIYNum1 = 1;
+ 736   2              if(diynum==2) bLCD_DIYNum2 = 1;
+ 737   2              if(diynum==3) bLCD_DIYNum3 = 1;
+ 738   2              if(diynum==4) bLCD_DIYNum4 = 1;
+ 739   2              if(diynum==5) bLCD_DIYNum5 = 1;
+ 740   2              if(diynum==0x81) bLCD_DIYNum1 = 1;  //porridge 4-6months
+ 741   2              if(diynum==0x82) bLCD_DIYNum2 = 1;  //porridge 7-9months
+ 742   2              if(diynum==0x83) bLCD_DIYNum3 = 1;  //porridge 10-12months
+ 743   2              if(diynum==0x84) bLCD_DIYNum4 = 1;  //porridge 13-14months
+ 744   2          }
+ 745   1          
+ 746   1          switch(state)
+ 747   1          {
+ 748   2              case    ZONE4_STAT_ALLOFF:
+ 749   2                  if(diynum==0)
+ 750   2                  {
+ 751   3                      g_u8LCDVal[1] = 0;
+ 752   3                      LCD_Buf[2] &= 0x7f;         //¹Øzone4Íâ¿ò Y5
+ 753   3                      LCD_Buf[22] &= 0xfe;        //Y6
+ 754   3                  }
+ 755   2                  break;
+ 756   2              case    ZONE4_STAT_SET_DEFAULT:
+ 757   2                  if(temp>0)                  //ÎÂ¶È¿ÉÉèÖÃ
+ 758   2                  {
+ 759   3                      bLCD_TempIcon = 1;
+ 760   3                      bLCD_TempNum = 1;
+ 761   3                      LCD_Buf[21] |= 0x01;    //s21 = 1
+ 762   3                      dpParam.u8Temp = temp;  //ÏÔÊ¾ÎÂ¶È
+ 763   3                  }
+ 764   2                  bLCD_TimeIcon = 1;
+ 765   2                  bLCD_TimeNum = 1;
+ 766   2                  bLCD_COL = 1;
+ 767   2                  LCD_Buf[20] |= 0x01;         //s22 = 1
+ 768   2                  LCD_Buf[1]  |= 0x01;         //s23 = 1
+ 769   2                  dpParam.u8Time[0] = ptime[1];   //ÏÔÊ¾·ÖÖÓ
+ 770   2                  dpParam.u8Time[1] = ptime[2];   //ÏÔÊ¾Ð¡Ê±
+ 771   2                  break;
+ 772   2              case    ZONE4_STAT_SET_CONFIRM:
+ 773   2                  if((temp>0)&&(bBookTime_EN==0)) //ÎÂ¶È¿ÉÉèÖÃÇÒÎÞÔ¤Ô¼
+ 774   2                  {
+ 775   3                      bLCD_TempIcon = 1;
+ 776   3                      bLCD_TempNum = 1;
+ 777   3                      LCD_Buf[21] |= 0x01;    //s21 = 1
+ 778   3                      dpParam.u8Temp = temp;  //ÏÔÊ¾ÎÂ¶È
+ 779   3                  }
+ 780   2                  bLCD_TimeIcon = 1;
+ 781   2                  bLCD_TimeNum = 1;
+ 782   2                  bLCD_COL = 1;
+ 783   2                  if(bBookTime_EN) bLCD_BNK_COL = 0;
+ 784   2                  else bLCD_BNK_COL = 1;
+ 785   2                  LCD_Buf[20] |= 0x01;         //s22 = 1
+ 786   2                  LCD_Buf[1]  |= 0x01;         //s23 = 1
+ 787   2                  dpParam.u8Time[0] = ptime[1];   //ÏÔÊ¾·ÖÖÓ
+ 788   2                  dpParam.u8Time[1] = ptime[2];   //ÏÔÊ¾Ð¡Ê±
+ 789   2                  break;
+ 790   2              case    ZONE4_STAT_DIY_SELECT:
+ 791   2                  if(diynum>0)
+ 792   2                  {
+ 793   3                      if(diynum&0x80)
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 14  
+
+ 794   3                      {
+ 795   4                          g_u8LCDVal[1] |= 0x0f;  //porridge
+ 796   4                      }
+ 797   3                      else
+ 798   3                      {
+ 799   4                          g_u8LCDVal[1] |= 0x1f;  
+ 800   4                      }
+ 801   3                      if(diynum==1) bLCD_BNK_DIYNum1 = 1;
+ 802   3                      if(diynum==2) bLCD_BNK_DIYNum2 = 1;
+ 803   3                      if(diynum==3) bLCD_BNK_DIYNum3 = 1;
+ 804   3                      if(diynum==4) bLCD_BNK_DIYNum4 = 1;
+ 805   3                      if(diynum==5) bLCD_BNK_DIYNum5 = 1;
+ 806   3                      if(diynum==0x81) bLCD_BNK_DIYNum1 = 1;  //porridge 4-6months
+ 807   3                      if(diynum==0x82) bLCD_BNK_DIYNum2 = 1;  //porridge 7-9months
+ 808   3                      if(diynum==0x83) bLCD_BNK_DIYNum3 = 1;  //porridge 10-12months
+ 809   3                      if(diynum==0x84) bLCD_BNK_DIYNum4 = 1;  //porridge 13-14months
+ 810   3                  }
+ 811   2                  break;
+ 812   2             case     ZONE4_STAT_TEMP_SELECT:
+ 813   2                 bLCD_TempIcon = 1;
+ 814   2                 bLCD_BNK_TempIcon = 1;
+ 815   2                 bLCD_TempNum = 1;
+ 816   2                 bLCD_BNK_TempNum = 1;
+ 817   2                 LCD_Buf[21] |= 0x01;    //s21 = 1
+ 818   2                 dpParam.u8Temp = temp;  //ÏÔÊ¾ÎÂ¶È
+ 819   2                 bLCD_TimeIcon = 1;
+ 820   2                 bLCD_TimeNum = 1;
+ 821   2                 bLCD_COL = 1;
+ 822   2                 LCD_Buf[20] |= 0x01;         //s22 = 1
+ 823   2                 LCD_Buf[1]  |= 0x01;         //s23 = 1
+ 824   2                 dpParam.u8Time[0] = ptime[1];   //ÏÔÊ¾·ÖÖÓ
+ 825   2                 dpParam.u8Time[1] = ptime[2];   //ÏÔÊ¾Ð¡Ê±     
+ 826   2                 break;
+ 827   2              case    ZONE4_STAT_TIME_SELECT:
+ 828   2                  if((temp>0)&&(bBookTime_EN==0)) //ÎÂ¶È¿ÉÉèÖÃÇÒÎÞÔ¤Ô¼
+ 829   2                  {
+ 830   3                      bLCD_TempIcon = 1;
+ 831   3                      bLCD_TempNum = 1;
+ 832   3                      LCD_Buf[21] |= 0x01;    //s21 = 1
+ 833   3                      dpParam.u8Temp = temp;  //ÏÔÊ¾ÎÂ¶È
+ 834   3                  }
+ 835   2                  bLCD_TimeIcon = 1;
+ 836   2                  bLCD_BNK_TimeIcon = 1;
+ 837   2                  bLCD_TimeNum = 1;
+ 838   2                  bLCD_BNK_TimeNum = 1;
+ 839   2                  bLCD_COL = 1;
+ 840   2                  LCD_Buf[20] |= 0x01;        //s22 = 1
+ 841   2                  LCD_Buf[1] |= 0x01;         //s23 = 1
+ 842   2                  dpParam.u8Time[0] = ptime[1];   //ÏÔÊ¾·ÖÖÓ
+ 843   2                  dpParam.u8Time[1] = ptime[2];   //ÏÔÊ¾Ð¡Ê±   
+ 844   2                  break;
+ 845   2              case    ZONE4_STAT_AUTO_CONFIRM:
+ 846   2                              bLCD_TimeNum = 1;
+ 847   2                              dpParam.u8Time[0] = 0xff;       //display"auto"
+ 848   2                  dpParam.u8Time[1] = 0xff;    
+ 849   2                  break;
+ 850   2              case    ZONE4_STAT_DEBUG:
+ 851   2                  #ifdef  DEBUG0
+ 852   2                  bLCD_TempNum = 1;
+ 853   2                  dpParam.u8Temp = temp;  //ÏÔÊ¾ÎÂ¶È
+ 854   2                  bLCD_COL = 1;
+ 855   2                  bLCD_BNK_COL = 1;
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 15  
+
+ 856   2                  bLCD_TimeNum = 1;
+ 857   2                  dpParam.u8Time[0] = ptime[1];   //ÏÔÊ¾·ÖÖÓ
+ 858   2                  dpParam.u8Time[1] = ptime[2];   //ÏÔÊ¾Ð¡Ê±  
+ 859   2                  #endif
+ 860   2                  break;
+ 861   2              default:
+ 862   2                  break;
+ 863   2          }
+ 864   1      }
+ 865          
+ 866          /*-----------------------------------------------------------------------------*
+ 867           *  Function Description:                                                      *
+ 868           *      LCD¶¯Ì¬ÏÔÊ¾Í¼±ê                                                                    *
+ 869           *  Parameters:                                                                *
+ 870           *      ÏÔÊ¾Ä£Ê½                                                               *
+ 871           *  Return                                                                     *
+ 872           *      None                                                                   *
+ 873           *----------------------------------------------------------------------------*/
+ 874          void    PlayGif(uint16 code *pGif,uint16 speed,uint8 stat)
+ 875          {
+ 876   1              m_u16pGif = m_u16pGifBak = pGif;
+ 877   1      
+ 878   1          m_u8Framestat = stat;
+ 879   1          
+ 880   1          if(pGif==NULL)      //Çå³ýGIFÏÔÊ¾
+ 881   1          {
+ 882   2              LCD_Buf[8] &= Bin(10010000);
+ 883   2              LCD_Buf[7] &= Bin(00000000);
+ 884   2              LCD_Buf[6] &= Bin(10000011);
+ 885   2              LCD_Buf[5] &= Bin(11111110);
+ 886   2          }
+ 887   1          
+ 888   1              if(speed<100)
+ 889   1              {
+ 890   2                      u8GifSpeed = 12;
+ 891   2              }
+ 892   1              else
+ 893   1              {
+ 894   2                      if(speed>1000)
+ 895   2                      {
+ 896   3                              u8GifSpeed = 125;
+ 897   3                      }
+ 898   2                      else
+ 899   2                      {
+ 900   3                              u8GifSpeed = speed/8;
+ 901   3                      }
+ 902   2              }       
+ 903   1              u8GifCnt = u8GifSpeed-1;
+ 904   1      }
+ 905          
+ 906          void    LCDDispGif(void)
+ 907          {
+ 908   1              uint16 tmp=0;
+ 909   1              
+ 910   1              if(m_u16pGif!=NULL)
+ 911   1              {
+ 912   2                      u8GifCnt++;
+ 913   2      
+ 914   2                      if(u8GifCnt>=u8GifSpeed)
+ 915   2                      {
+ 916   3                              u8GifCnt = 0;
+ 917   3                              tmp = *m_u16pGif++;
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 16  
+
+ 918   3                              if(tmp==0)
+ 919   3                              {
+ 920   4                                      m_u16pGif = NULL;
+ 921   4                                      return;
+ 922   4                              }
+ 923   3                              else
+ 924   3                              {
+ 925   4                                      if(tmp==0xffff)
+ 926   4                                      {
+ 927   5                                              m_u16pGif = m_u16pGifBak;
+ 928   5                                              u8GifCnt = u8GifSpeed-1;
+ 929   5                                      }
+ 930   4                                      else
+ 931   4                                      {
+ 932   5                                              if(TstBit(tmp,0))   SetBit(LCD_Buf[8], 1); else ClrBit(LCD_Buf[8], 1); //T3
+ 933   5                                              if(TstBit(tmp,1))   SetBit(LCD_Buf[8], 3); else ClrBit(LCD_Buf[8], 3); //T4
+ 934   5                                              if(TstBit(tmp,2))   SetBit(LCD_Buf[8], 5); else ClrBit(LCD_Buf[8], 5); //T5
+ 935   5                                              if(TstBit(tmp,3))   SetBit(LCD_Buf[8], 2); else ClrBit(LCD_Buf[8], 2); //T6
+ 936   5                                              if(TstBit(tmp,4))   SetBit(LCD_Buf[8], 6); else ClrBit(LCD_Buf[8], 6); //T7
+ 937   5                                              if(TstBit(tmp,5))   SetBit(LCD_Buf[8], 0); else ClrBit(LCD_Buf[8], 0); //T8
+ 938   5                                              if(TstBit(tmp,6))   
+ 939   5                          {
+ 940   6                              SetBit(LCD_Buf[7], 0);  //T9
+ 941   6                              SetBit(LCD_Buf[5], 0);  //T20
+ 942   6                          }
+ 943   5                          else 
+ 944   5                          {
+ 945   6                              ClrBit(LCD_Buf[7], 0);  //T9
+ 946   6                              ClrBit(LCD_Buf[5], 0);  //T20
+ 947   6                          }
+ 948   5                          if(TstBit(tmp,7))   
+ 949   5                          {
+ 950   6                              SetBit(LCD_Buf[7], 5);  //T10 
+ 951   6                              SetBit(LCD_Buf[6], 4);  //T21
+ 952   6                              SetBit(LCD_Buf[6], 5);  //T22
+ 953   6                          }
+ 954   5                          else 
+ 955   5                          {
+ 956   6                              ClrBit(LCD_Buf[7], 5);  //T10
+ 957   6                              ClrBit(LCD_Buf[6], 4);  //T21
+ 958   6                              ClrBit(LCD_Buf[6], 5);  //T22
+ 959   6                          }
+ 960   5                          if(TstBit(tmp,8))   
+ 961   5                          {
+ 962   6                              SetBit(LCD_Buf[7], 4);  //T11
+ 963   6                              SetBit(LCD_Buf[6], 4);  //T21
+ 964   6                              SetBit(LCD_Buf[6], 5);  //T22
+ 965   6                          }
+ 966   5                          else 
+ 967   5                          {
+ 968   6                              ClrBit(LCD_Buf[7], 4);  //T11
+ 969   6                              if(TstBit(tmp,7))  
+ 970   6                              {
+ 971   7                                  SetBit(LCD_Buf[6], 4);  //T21
+ 972   7                                  SetBit(LCD_Buf[6], 5);  //T22
+ 973   7                              }
+ 974   6                              else
+ 975   6                              {
+ 976   7                                  ClrBit(LCD_Buf[6], 4);  //T21
+ 977   7                                  ClrBit(LCD_Buf[6], 5);  //T22
+ 978   7                              }
+ 979   6                          }
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 17  
+
+ 980   5                          if(TstBit(tmp,9))   
+ 981   5                          {
+ 982   6                              SetBit(LCD_Buf[7], 6);  //T12
+ 983   6                              SetBit(LCD_Buf[6], 2);  //T23
+ 984   6                          }
+ 985   5                          else 
+ 986   5                          {
+ 987   6                              ClrBit(LCD_Buf[7], 6);  //T12
+ 988   6                              ClrBit(LCD_Buf[6], 2);  //T23
+ 989   6                          }
+ 990   5                          if(TstBit(tmp,10))  SetBit(LCD_Buf[7], 7); else ClrBit(LCD_Buf[7], 7); //T13
+ 991   5                          if(TstBit(tmp,11))  SetBit(LCD_Buf[7], 1); else ClrBit(LCD_Buf[7], 1); //T14
+ 992   5                          if(TstBit(tmp,12))  SetBit(LCD_Buf[6], 3); else ClrBit(LCD_Buf[6], 3); //T15
+ 993   5                          if(TstBit(tmp,13))  SetBit(LCD_Buf[7], 2); else ClrBit(LCD_Buf[7], 2); //T16
+ 994   5                          if(TstBit(tmp,14))  SetBit(LCD_Buf[7], 3); else ClrBit(LCD_Buf[7], 3); //T17
+ 995   5                          if(TstBit(tmp,15))  SetBit(LCD_Buf[6], 6); else ClrBit(LCD_Buf[6], 6); //T18
+ 996   5                                      }
+ 997   4                              }
+ 998   3                      }
+ 999   2              }
+1000   1      }
+1001          
+1002          /*-----------------------------------------------------------------------------*
+1003           *  Function Description:                                                      *
+1004           *      ìÒÌåÖÜÎ§µÄÐý×ª·½¿ò                                                                 *
+1005           *  Parameters:                                                                *
+1006           *      sequence                                                               *
+1007           *  Return                                                                     *
+1008           *      None                                                                   *
+1009           *----------------------------------------------------------------------------*/
+1010          void    LCDDispMovie(uint8 stat)
+1011          {
+1012   1          static uint8 sequence = 0;
+1013   1      
+1014   1          if(stat==0)         //Çå³ýÓë¶¯»­ÎÞ¹ØµÄ²¿·Ö
+1015   1          {
+1016   2              LCD_Buf[5] &= Bin(00000001);
+1017   2              LCD_Buf[6] &= Bin(01111101);
+1018   2              return;
+1019   2          }
+1020   1          else
+1021   1          {
+1022   2              if(stat==1)     //Çå³ý
+1023   2              {
+1024   3                  sequence = 0;
+1025   3              }
+1026   2              else
+1027   2              {
+1028   3                  if(stat==2) //Ðý×ª
+1029   3                  {
+1030   4                      if(u8lcdcnt==15)
+1031   4                      {
+1032   5                          sequence++;
+1033   5                          if(sequence>11) sequence = 1;
+1034   5                      }
+1035   4                  }
+1036   3                  else        //È«ÏÔ
+1037   3                  {
+1038   4                      sequence = 0xff;
+1039   4                  }
+1040   3              }
+1041   2          }
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 18  
+
+1042   1      
+1043   1          LCD_Buf[5]  |= Bin(11011110);   //light on  circular frame
+1044   1          LCD_Buf[6]  |= Bin(10100010);
+1045   1          LCD_Buf[7]  |= Bin(01000001);
+1046   1          
+1047   1              switch(sequence)
+1048   1              {
+1049   2                      case    0:                  //Clear circular frame
+1050   2                              LCD_Buf[5]      &= Bin(00000001);
+1051   2                  LCD_Buf[6]  &= Bin(01011100);
+1052   2                  LCD_Buf[7]  &= Bin(10111110);
+1053   2                              break;
+1054   2                      case    1:              
+1055   2                  LCD_Buf[6]  &= Bin(11011111);   //CLR T22
+1056   2                              break;
+1057   2                      case    2:
+1058   2                  LCD_Buf[7]  &= Bin(10111111);   //CLR T12
+1059   2                              break;
+1060   2                      case    3:
+1061   2                  LCD_Buf[6]  &= Bin(01111111);   //CLR R8
+1062   2                              break;
+1063   2                      case    4:
+1064   2                  LCD_Buf[6]  &= Bin(11111101);   //CLR R7
+1065   2                              break;
+1066   2                      case    5:
+1067   2                  LCD_Buf[5]  &= Bin(01111111);   //CLR R6
+1068   2                              break;
+1069   2                      case    6:
+1070   2                  LCD_Buf[5]  &= Bin(10111111);   //CLR R5
+1071   2                              break;
+1072   2                      case    7:
+1073   2                              LCD_Buf[5]  &= Bin(11101111);   //CLR R4
+1074   2                              break;
+1075   2                      case    8:
+1076   2                              LCD_Buf[5]  &= Bin(11110111);   //CLR R3
+1077   2                              break;
+1078   2                      case    9:
+1079   2                  LCD_Buf[5]  &= Bin(11111011);   //CLR R2
+1080   2                              break;
+1081   2                      case    10:
+1082   2                  LCD_Buf[5]  &= Bin(11111101);   //CLR R1
+1083   2                              break;
+1084   2                      case    11:
+1085   2                              LCD_Buf[7]  &= Bin(11111110);   //CLR T9
+1086   2                              break;
+1087   2                      default:
+1088   2                              break;
+1089   2              }
+1090   1      }
+1091          
+1092          /*-----------------------------------------------------------------------------*
+1093           *  Function Description:                                                      *
+1094           *      °´²½ÖèÏÔÊ¾×Ô¼ìÄÚÈÝ                                                                 *
+1095           *  Parameters:                                                                *
+1096           *      ×Ô¼ì²½Öè                                                               *
+1097           *  Return                                                                     *
+1098           *      None                                                                   *
+1099           *----------------------------------------------------------------------------*/
+1100           void    LCDDispSelfChk(uint8 step)
+1101          {
+1102   1          uint8       u8BotDegree     =       ADCGetData(AD_CH_BOT);
+1103   1              uint8   u8TopDegree =   ADCGetData(AD_CH_TOP);
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 19  
+
+1104   1          uint8   i;
+1105   1          
+1106   1          LCDDispAll(0);                      //Çå³ýËùÓÐÏÔÊ¾
+1107   1          switch(step)
+1108   1          {
+1109   2              case    0:
+1110   2                  LCDDispNum_HI(0x23);                //ÏÔÊ¾ÐòÁÐºÅ--Plug in & Press"start"
+1111   2                              LCDDispNum_LO(0x01);    
+1112   2                              ClrLedBlank(BIT_LED_ALL);
+1113   2                  break;
+1114   2              case    1:
+1115   2                  LCDDispAll(1);              //LCDÈ«ÏÔ--Press">"
+1116   2                  break;
+1117   2              case    2:                      //ÏÔÊ¾"b1b1"--Press"Reheat"
+1118   2              case    3:                      //ÏÔÊ¾"b2b2"--Press"Keepwarm"
+1119   2              case    4:                      //ÏÔÊ¾"b3b3"--Press"Delay"
+1120   2              case    5:                      //ÏÔÊ¾"b4b4"--Press"Stop"
+1121   2              case    6:                      //ÏÔÊ¾"b5b5"--Press"+"
+1122   2              case    7:                      //ÏÔÊ¾"b6b6"--Press"Start"
+1123   2              case    8:                      //ÏÔÊ¾"b7b7"--Press"-"
+1124   2              case    9:                      //ÏÔÊ¾"b8b8"--Press"Cancel"
+1125   2                  case    10:                     //ÏÔÊ¾"b9b9"--Press"My Recipe"
+1126   2                  case    11:                     //ÏÔÊ¾"baba"--Press"Timer/Temperature"
+1127   2              case    12:                     //ÏÔÊ¾"bbbb"--Press"Menu"   
+1128   2                              ClrLedBlank(BIT_LED_ALL);
+1129   2                          if(step==2) LedOn(BIT_LED_REHEAT);
+1130   2                          if(step==3) LedOn(BIT_LED_WARM);
+1131   2                          if(step==4) LedOn(BIT_LED_DELAY);
+1132   2                          if(step==5) LedOn(BIT_LED_STOP);
+1133   2                          if(step==7) LedOn(BIT_LED_START);
+1134   2                  i = (step-1)&0x0f;
+1135   2                  i |= 0xb0;
+1136   2                  LCDDispNum_HI(i);
+1137   2                  LCDDispNum_LO(i);        
+1138   2                  break;    
+1139   2              case    13:
+1140   2                  LCDDispCookTemp(u8BotDegree,1);   //ÏÔÊ¾"temperature of bottom NTC"--Press"Menu"
+1141   2                  break;
+1142   2              case    14:
+1143   2                  LCDDispCookTemp(u8TopDegree,1);   //ÏÔÊ¾"temperature of top NTC"--Press"Menu"
+1144   2                  break;
+1145   2              case    15:
+1146   2                  LCDDispNum_LO(0xC1);        //ÏÔÊ¾"U1"--Press"Menu"
+1147   2                  break;
+1148   2              case    16:
+1149   2                  LCDDispNum_LO(0xC2);        //ÏÔÊ¾"U2"--Press"Menu"
+1150   2                  break;
+1151   2              case    17:
+1152   2                  LCDDispNum_LO(0xC3);        //ÏÔÊ¾"U3"--Press"Menu"
+1153   2                  break;
+1154   2              case    18:
+1155   2                  LCDDispNum_HI(0x00);        //ÏÔÊ¾"OOFF"--Press"Menu"
+1156   2                  LCDDispNum_LO(0xFF);
+1157   2                              ClrLedBlank(BIT_LED_ALL|BIT_LED_BKL);
+1158   2                  break;
+1159   2          }
+1160   1      }
+1161          
+1162          /*-----------------------------------------------------------------------------*
+1163           *  Function Description:                                                      *
+1164           *      LCD´¦Àí(¹¦ÄÜ²Ëµ¥ÉÁË¸¿ØÖÆ&&ÏµÍ³×´Ì¬¿ØÖÆ)                                *
+1165           *  Parameters:                                                                *
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 20  
+
+1166           *      None                                                                   *
+1167           *  Return                                                                     *
+1168           *      None                                                                   *
+1169           *----------------------------------------------------------------------------*/
+1170          void    LCDProc(uint8 sysid)
+1171          {
+1172   1          uint8 i,j;
+1173   1          
+1174   1              u8BlankCnt++;
+1175   1      
+1176   1              if(u8BlankCnt >= 63)
+1177   1              {
+1178   2                      if(u8BlankCnt >= 126)
+1179   2                      {
+1180   3                              u8BlankCnt      =       0;
+1181   3                      }    
+1182   2              i =     g_u8LCDVal[0];
+1183   2              j = g_u8LCDVal[1];
+1184   2              }
+1185   1          else
+1186   1          {
+1187   2              i = g_u8LCDVal[0]^g_u8BlankVal[0];
+1188   2              j = g_u8LCDVal[1]^g_u8BlankVal[1];
+1189   2          }
+1190   1      
+1191   1          if(TstBit(i, 0)) LCD_Buf[3] |= (1<<6); else LCD_Buf[3] &= ~(1<<6);                  //HealthIcon
+1192   1          if(TstBit(i, 1)) LCD_Buf[3] |= (1<<5); else LCD_Buf[3] &= ~(1<<5);                  //ClassicIcon     
+             -    
+1193   1          if(TstBit(i, 2)) LCDDispMenuNum(dpParam.u8Menu,1); else LCDDispMenuNum(0,0);        //MenuNum
+1194   1          if(TstBit(i, 3)) LCDDispTexture(dpParam.u8texture,1); else LCDDispTexture(0,0);     //Texture
+1195   1          if(TstBit(i, 4)) LCD_Buf[4] |= (1<<1); else LCD_Buf[4] &= ~(1<<1);                  //PeopleIcon
+1196   1          if(TstBit(i, 5)) LCDDispPeopleNum(dpParam.u8People,1); else LCDDispPeopleNum(0,0);  //PeopleNum
+1197   1          if(TstBit(i, 6)) LCD_Buf[2] |= (1<<5); else LCD_Buf[2] &= ~(1<<5);                  //TempIcon
+1198   1          if(TstBit(i, 7)) LCD_Buf[2] |= (1<<6); else LCD_Buf[2] &= ~(1<<6);                  //TimeIcon
+1199   1      
+1200   1          if(TstBit(j, 0)) LCD_Buf[2] |= (1<<0); else LCD_Buf[2] &= ~(1<<0);                  //DIYNum1
+1201   1          if(TstBit(j, 1)) LCD_Buf[2] |= (1<<1); else LCD_Buf[2] &= ~(1<<1);                  //DIYNum2
+1202   1          if(TstBit(j, 2)) LCD_Buf[2] |= (1<<2); else LCD_Buf[2] &= ~(1<<2);                  //DIYNum3
+1203   1          if(TstBit(j, 3)) LCD_Buf[2] |= (1<<3); else LCD_Buf[2] &= ~(1<<3);                  //DIYNum4
+1204   1          if(TstBit(j, 4)) LCD_Buf[2] |= (1<<4); else LCD_Buf[2] &= ~(1<<4);                  //DIYNum5
+1205   1          if(TstBit(j, 5)) LCDDispCookTemp(dpParam.u8Temp,1); else LCDDispCookTemp(0,0);      //TempNum
+1206   1          if(TstBit(j, 6)) LCDDispCookTime(dpParam.u8Time,1); else LCDDispCookTime(0,0);      //TimeNum
+1207   1          if(TstBit(j, 7)) LCD_Buf[19] |= (1<<0); else LCD_Buf[19] &= ~(1<<0);                //COL
+1208   1      
+1209   1          if(bKeyMusic_EN) LCD_Buf[4] &= ~(1<<7); else LCD_Buf[4] |= (1<<7);  //ÉùÒôÍ¼±ê
+1210   1          if(bSoakStage)   LCD_Buf[8] |= (1<<4); else LCD_Buf[8] &= ~(1<<4);  //ÎüË®Í¼±ê
+1211   1          if(bHeatStage)   LCD_Buf[8] |= (1<<7); else LCD_Buf[8] &= ~(1<<7);  //¼ÓÈÈÍ¼±ê
+1212   1      
+1213   1              LCDDispGif();                                      //¶¯»­ÏÔÊ¾
+1214   1      
+1215   1          LCDDispMovie(m_u8Framestat);       //Ðý×ª·½¿ò
+1216   1              
+1217   1              //ÏµÍ³×´Ì¬¿ØÖÆ
+1218   1              switch(sysid)
+1219   1              {
+1220   2                      case    0:                                      //¸´Î»
+1221   2                              LCDDispAll(1);
+1222   2                              break;  
+1223   2              case    5:                  //¹Ø»ú
+1224   2                  LCDDispAll(0);
+1225   2                  break;
+1226   2              case    6:                  //±¨¾¯
+C51 COMPILER V9.52.0.0   LCD                                                               12/24/2015 16:08:15 PAGE 21  
+
+1227   2                  LCDDispError();
+1228   2                  break;
+1229   2              case    7:                                      //×Ô¼ì
+1230   2                  LCDDispSelfChk(m_u8SelfChkStep);
+1231   2                              break;
+1232   2                      default:        
+1233   2                              break;  
+1234   2              }
+1235   1      
+1236   1          u8lcdcnt++;
+1237   1          if(u8lcdcnt>15)
+1238   1          {
+1239   2              u8lcdcnt = 0;
+1240   2              for(i=0;i<VBUF_SIZE;i++)                                
+1241   2                  {
+1242   3                          SEG[i] = LCD_Buf[i];
+1243   3                  }
+1244   2          }
+1245   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   3269    ----
+   CONSTANT SIZE    =    130    ----
+   XDATA SIZE       =     29    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     12      24
+   IDATA SIZE       =     10    ----
+   BIT SIZE         =   ----       7
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

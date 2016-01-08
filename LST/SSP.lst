@@ -1,0 +1,207 @@
+C51 COMPILER V9.52.0.0   SSP                                                               12/24/2015 16:08:15 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE SSP
+OBJECT MODULE PLACED IN .\OBJ\SSP.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE SRC\SSP.c BROWSE DEBUG OBJECTEXTEND PRINT(.\LST\SSP.lst) OBJECT(.\OBJ\SSP.o
+                    -bj)
+
+line level    source
+
+   1          /*-----------------------------*
+   2           *  include head files         *
+   3           *----------------------------*/
+   4          #include ".\Head\HD_cfg.h"
+   5          
+   6          /*-----------------------------*
+   7           *  Macros for constants       *
+   8           *----------------------------*/
+   9          
+  10          /*-----------------------------*
+  11           *  Macros for others          *
+  12           *----------------------------*/
+  13          
+  14          
+  15          /*-----------------------------*
+  16           *  type definitions           *
+  17           *----------------------------*/
+  18          
+  19          
+  20          /*-----------------------------*
+  21           *  structure,union and enum   *
+  22           *----------------------------*/
+  23          
+  24          
+  25          /*-----------------------------*
+  26           *  public functions prototypes*
+  27           *----------------------------*/
+  28          void ReadFlash(uint16 flashaddr,uint8 *ptr);
+  29          void WriteFlash(uint16 flashaddr,uint8 *ptr);
+  30          void EraseFlash(uint16 flashaddr);
+  31          
+  32          /*-----------------------------*
+  33           *  static functions prototypes*
+  34           *----------------------------*/
+  35          
+  36          
+  37          /*-----------------------------*
+  38           *  public variable declaration*
+  39           *----------------------------*/
+  40          FLASH_MEMORY xdata      Flash;  
+  41          uint8   idata SSP_Flag;
+  42          
+  43          /*-----------------------------*
+  44           *  static variable declaration*
+  45           *----------------------------*/
+  46          
+  47          
+  48          /*--------------------------------------------------------------------------*
+  49          /*                      void EraseFlash(uint16 flashaddr)
+  50          /* 功能说明:    擦除扇区的FLASH空间
+  51          /* 其他说明:    
+  52          /* 输入:                需要擦除扇区地址
+  53          /* 输出:                
+  54           *-------------------------------------------------------------------------*/
+C51 COMPILER V9.52.0.0   SSP                                                               12/24/2015 16:08:15 PAGE 2   
+
+  55          void EraseFlash(uint16 flashaddr)
+  56          {
+  57   1              Bool    EA_BAK = EA;                            //保存中断状态
+  58   1              //---------------------------------------
+  59   1      //step 1
+  60   1              EA = 0;                                                         //禁用中断
+  61   1      //step 2
+  62   1              XPAGE = (flashaddr>>8) & 0x07;          //选择扇区
+  63   1              FLASHCON =1;                        //访问类EEPROM区域
+  64   1      //step 3
+  65   1              if(SSP_Flag==SSP_ERASE_FLAG)
+  66   1              {       
+  67   2                      IB_CON1  = 0xE6;                                //设置SSP操作为擦除操作
+  68   2                      IB_CON2  = 0x05;                                //流程控制
+  69   2                      IB_CON3  = 0x0A;
+  70   2                      IB_CON4  = 0x09;
+  71   2                      IB_CON5  = 0x06;
+  72   2      //step 4
+  73   2                      _nop_();                                                //稳定FLASH编程
+  74   2                      _nop_();
+  75   2                      _nop_();
+  76   2                      _nop_();
+  77   2              }
+  78   1              else
+  79   1              {
+  80   2                      IB_CON2  = 0x00;                //终止Flash编程
+  81   2              }
+  82   1      //step 5
+  83   1              SSP_Flag  = 0;          
+  84   1              FLASHCON  = 0;
+  85   1              XPAGE     = 0;
+  86   1              //---------------------------------------
+  87   1              EA = EA_BAK;                                            //恢复中断状态
+  88   1      }
+  89          
+  90          /*--------------------------------------------------------------------------*
+  91          /*                      void WriteFlash(uint16 flashaddr,uint8 *ptr);
+  92          /* 功能说明:    写数据到FLASH
+  93          /* 其他说明:    
+  94          /* 输入:            写入的FLASH地址 ，数据指针
+  95          /* 输出:                
+  96           *-------------------------------------------------------------------------*/
+  97          void WriteFlash(uint16 flashaddr,uint8 *ptr)
+  98          {
+  99   1              uint8   i;
+ 100   1              Bool    EA_BAK = EA;                            //保存中断状态
+ 101   1      //step 1
+ 102   1              EA = 0;                                                         //禁用中断
+ 103   1      //step 2
+ 104   1              XPAGE    = (flashaddr>>8) & 0x07;       //选择扇区
+ 105   1              IB_OFFSET= flashaddr&0xff;                      //载入ROM地址
+ 106   1              FLASHCON =1;                        //访问类EEPROM区域
+ 107   1      //step 3
+ 108   1              IB_DATA  = RECORD_NOEMPTY;                      //载入数据
+ 109   1      //step 4
+ 110   1              if(SSP_Flag==SSP_WRITE_FLAG)
+ 111   1              {
+ 112   2                      IB_CON1  = 0x6E;                                //设置为编程操作
+ 113   2                      IB_CON2  = 0x05;                                //流程控制
+ 114   2                      IB_CON3  = 0x0A;
+ 115   2                      IB_CON4  = 0x09;
+ 116   2                      IB_CON5  = 0x06;
+C51 COMPILER V9.52.0.0   SSP                                                               12/24/2015 16:08:15 PAGE 3   
+
+ 117   2      //step 5
+ 118   2                      _nop_();                                                //稳定FLASH编程
+ 119   2                      _nop_();
+ 120   2                      _nop_();
+ 121   2                      _nop_();
+ 122   2      //step 6
+ 123   2                      flashaddr ++;
+ 124   2                      for(i=1;i<=FLASH_RECORD_BYTES;i++)      //重复步骤2
+ 125   2                      {
+ 126   3                              XPAGE = (flashaddr>>8) & 0x07;  //step 2
+ 127   3                              IB_OFFSET= flashaddr&0xff;
+ 128   3                              FLASHCON =1; 
+ 129   3                              IB_DATA  = *(ptr+i);                    //step 3
+ 130   3                          IB_CON1      = 0x6E;                                //step 4
+ 131   3                          IB_CON2      = 0x05;
+ 132   3                          IB_CON3      = 0x0A;
+ 133   3                          IB_CON4      = 0x09;
+ 134   3                          IB_CON5      = 0x06;
+ 135   3                          _nop_();                                            //step 5
+ 136   3                          _nop_();
+ 137   3                          _nop_();
+ 138   3                          _nop_();
+ 139   3                          flashaddr ++;                                   //step 6
+ 140   3                      }
+ 141   2              }
+ 142   1              else
+ 143   1              {
+ 144   2                      IB_CON2  = 0x00;                //终止Flash编程
+ 145   2              }
+ 146   1      //step 7
+ 147   1              SSP_Flag  = 0;          
+ 148   1              FLASHCON  = 0;
+ 149   1              XPAGE     = 0;
+ 150   1              //---------------------------------------
+ 151   1              EA = EA_BAK;                                            //恢复中断状态
+ 152   1      }
+ 153          
+ 154          /*--------------------------------------------------------------------------*
+ 155          /*                      void ReadFlash(uint16 flashaddr,uint8 *ptr)
+ 156          /* 功能说明:    读FLASH ROM数据
+ 157          /* 其他说明:    
+ 158          /* 输入:                ROM地址 ，数据指针
+ 159          /* 输出:                
+ 160           *-------------------------------------------------------------------------*/
+ 161          void ReadFlash(uint16 flashaddr,uint8 *ptr)
+ 162          {
+ 163   1              uint8 i;
+ 164   1      
+ 165   1              FLASHCON  = 1;                                                          //访问类EEPROM区域
+ 166   1              for(i=0;i<=FLASH_RECORD_BYTES;i++)                      //读取(FLASH_RECORD_BYTES+1)个字节数据
+ 167   1              {
+ 168   2                      *ptr = *(uint8 code *)(flashaddr);
+ 169   2                      ptr ++;
+ 170   2                      flashaddr ++;
+ 171   2              }
+ 172   1              FLASHCON  = 0;  
+ 173   1      }
+ 174          
+ 175          
+ 176          
+ 177          
+
+C51 COMPILER V9.52.0.0   SSP                                                               12/24/2015 16:08:15 PAGE 4   
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    246    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =     41    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----       7
+   IDATA SIZE       =      1    ----
+   BIT SIZE         =   ----       2
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

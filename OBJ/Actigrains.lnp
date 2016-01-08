@@ -1,0 +1,20 @@
+".\OBJ\STARTUP.obj",
+".\OBJ\HD_cfg.obj",
+".\OBJ\AD.obj",
+".\OBJ\Buzzer.obj",
+".\OBJ\LED.obj",
+".\OBJ\Key.obj",
+".\OBJ\SSP.obj",
+".\OBJ\LCD.obj",
+".\OBJ\IIC.obj",
+".\OBJ\Main.obj",
+".\OBJ\System.obj",
+".\OBJ\Script.obj",
+".\OBJ\Time.obj",
+".\OBJ\TempCtr.obj",
+".\OBJ\TableFunc.obj",
+".\OBJ\Tables.obj",
+".\SRC\SinoLib.LIB",
+".\OBJ\math.obj" 
+TO ".\OBJ\Actigrains" 
+PRINT(".\LST\Actigrains.m51") RAMSIZE(256) 

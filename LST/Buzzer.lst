@@ -1,0 +1,213 @@
+C51 COMPILER V9.52.0.0   BUZZER                                                            12/24/2015 16:08:14 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE BUZZER
+OBJECT MODULE PLACED IN .\OBJ\Buzzer.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE SRC\Buzzer.c BROWSE DEBUG OBJECTEXTEND PRINT(.\LST\Buzzer.lst) OBJECT(.\OBJ
+                    -\Buzzer.obj)
+
+line level    source
+
+   1          /*-----------------------------*
+   2           *  include head files         *
+   3           *----------------------------*/
+   4          #include ".\Head\HD_cfg.h"
+   5          
+   6          /*-----------------------------*
+   7           *  Macros for constants       *
+   8           *----------------------------*/
+   9          
+  10          /*-----------------------------*
+  11           *  Macros for others          *
+  12           *----------------------------*/
+  13          
+  14          
+  15          /*-----------------------------*
+  16           *  type definitions           *
+  17           *----------------------------*/
+  18          
+  19          
+  20          /*-----------------------------*
+  21           *  structure,union and enum   *
+  22           *----------------------------*/
+  23          
+  24          
+  25          /*-----------------------------*
+  26           *  public functions prototypes*
+  27           *----------------------------*/
+  28          void    SoundProc(void);
+  29          void    PlaySound(uint8 code *pMusic);
+  30          
+  31          /*-----------------------------*
+  32           *  static functions prototypes*
+  33           *----------------------------*/
+  34          
+  35          
+  36          /*-----------------------------*
+  37           *  public variable declaration*
+  38           *----------------------------*/
+  39          uint8   m_u8OnTime      =       0;
+  40          uint8   m_u8OffTime     =       0;
+  41          uint8   code    *m_u8pMusic     =       NULL;
+  42          uint8   code    *m_u8pMusicBak =  NULL;         //备份指针，用于重复播放
+  43          
+  44          uint16  code    MetroTable[] =
+  45          {
+  46          //      0ms             80ms    200ms   500ms   1000ms  2000ms  
+  47                  0,              10,             25,             63,             125,    250
+  48          };
+  49          
+  50          uint8   code    MusicPoweron[] =
+  51          {
+  52              M_1000|S_200,0x00
+  53          };
+  54          
+C51 COMPILER V9.52.0.0   BUZZER                                                            12/24/2015 16:08:14 PAGE 2   
+
+  55          uint8   code    MusicKeyDown[] =
+  56          {
+  57              M_200|S_200,0x00
+  58          };
+  59          
+  60          uint8   code    MusicSysError[] =
+  61          {
+  62              M_500|S_500,M_500|S_500,M_500|S_500,M_500|S_500,M_500|S_500,
+  63                  M_500|S_500,M_500|S_500,M_500|S_500,M_500|S_500,M_500|S_500,0x00
+  64          };
+  65          
+  66          uint8   code    MusicCookEnd[] =
+  67          {
+  68              M_1000|S_500,M_1000|S_500,M_1000|S_500,0x00
+  69          };
+  70          
+  71          uint8 code      MusicCountDown[]        =
+  72          {
+  73                  M_1000|S_500,M_1000|S_500,0x00
+  74          };
+  75          
+  76          uint8 code  MusicInputFood[] =
+  77          {
+  78                  M_200|S_200,M_200|S_200,0x00   
+  79          };
+  80          
+  81          uint8 code      MusicCycleEnd[] =
+  82          {
+  83                  M_80|S_80,M_80|S_80,0x00
+  84          };
+  85          
+  86          uint8 code MusicOFF[] =
+  87          {
+  88                  0x00
+  89          };
+  90          
+  91          uint8 code MusicAchievedTemp[] =
+  92          {
+  93                  M_1000|S_200,M_1000|S_200,0x00
+  94          };
+  95          /*-----------------------------*
+  96           *  static variable declaration*
+  97           *----------------------------*/
+  98          
+  99          
+ 100          /*-----------------------------------------------------------------------------*
+ 101           *  Function Description:                                                      *
+ 102           *      声音播放函数                                                           *
+ 103           *  Parameters:                                                                *
+ 104           *      声音数据首地址                                                         *
+ 105           *  Return                                                                     *
+ 106           *      None                                                                   *
+ 107           *----------------------------------------------------------------------------*/
+ 108          void    PlaySound(uint8 code    *pMusic)
+ 109          {
+ 110   1              m_u8pMusicBak   =       m_u8pMusic  =   pMusic;
+ 111   1              m_u8OnTime              =       0;
+ 112   1              m_u8OffTime     =       1;
+ 113   1      }
+ 114          
+ 115          /*-----------------------------------------------------------------------------*
+ 116           *  Function Description:                                                      *
+C51 COMPILER V9.52.0.0   BUZZER                                                            12/24/2015 16:08:14 PAGE 3   
+
+ 117           *      声音处理进程                                                           *
+ 118           *  Parameters:                                                                *
+ 119           *      None                                                                   *
+ 120           *  Return                                                                     *
+ 121           *      None                                                                   *
+ 122           *----------------------------------------------------------------------------*/
+ 123          void    SoundProc(void)
+ 124          {
+ 125   1              uint8   u8Tmp;
+ 126   1      
+ 127   1              if(m_u8OnTime>0)
+ 128   1              {
+ 129   2                      m_u8OnTime--;
+ 130   2              }
+ 131   1              else    
+ 132   1              {
+ 133   2                      if(m_u8OffTime>0)
+ 134   2                      {               
+ 135   3      //                      PWMLO   =       0x55;                   //解锁PWM寄存器
+ 136   3      //                      PWMEN   =       0;                              //PWM0输出禁止
+ 137   3      //                      PWMLO   =       0xAA;                   //锁定PWM寄存器
+ 138   3      //                      P0CR    &=  0xf7;
+ 139   3      //                      P0PCR   |=  0X08;
+ 140   3                  Enter_Bank1;
+ 141   3                  IO_BUZ  =   0;
+ 142   3                  Enter_Bank0;
+ 143   3                  
+ 144   3                              m_u8OffTime--;
+ 145   3      
+ 146   3                              if(m_u8OffTime==0)
+ 147   3                              {    
+ 148   4                                      //取音符频率,和节拍
+ 149   4                                      u8Tmp   =       *m_u8pMusic;
+ 150   4                                      if(u8Tmp        ==      0x00)
+ 151   4                                      {       
+ 152   5                                              //音乐结束
+ 153   5                                              return;                 
+ 154   5                                      }
+ 155   4                                      else    
+ 156   4                                      {
+ 157   5                                              if(u8Tmp  ==  0xff)
+ 158   5                                              {     
+ 159   6                                                      //音乐循环
+ 160   6                                              m_u8pMusic  =   m_u8pMusicBak;
+ 161   6                                      m_u8OnTime      =       0;
+ 162   6                                      m_u8OffTime     =       1;
+ 163   6                                                      return;
+ 164   6                              }
+ 165   5              
+ 166   5                                              u8Tmp           &=      0x0f;                             //前4位为打开时间
+ 167   5                                              m_u8OnTime      =       MetroTable[u8Tmp];
+ 168   5      
+ 169   5                              u8Tmp           =       *m_u8pMusic++;
+ 170   5                                              u8Tmp           =       (u8Tmp>>4)&0x0f;      //后4位为关闭时间
+ 171   5                                              m_u8OffTime     =       MetroTable[u8Tmp];
+ 172   5                                              
+ 173   5      //                                      PWMLO   =       0x55;                   //解锁PWM寄存器
+ 174   5      //                                      PWMEN   =       0x01;                   //PWM0输出允许
+ 175   5      //                                      PWMLO   =       0xAA;                   //锁定PWM寄存器
+ 176   5                          Enter_Bank1;
+ 177   5                          IO_BUZ  =   1;
+ 178   5                          Enter_Bank0;
+C51 COMPILER V9.52.0.0   BUZZER                                                            12/24/2015 16:08:14 PAGE 4   
+
+ 179   5                                      }
+ 180   4                              }
+ 181   3                      }
+ 182   2              }
+ 183   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    144    ----
+   CONSTANT SIZE    =     44    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      6    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

@@ -1,0 +1,3681 @@
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 1   
+
+
+C51 COMPILER V9.52.0.0, COMPILATION OF MODULE SYSTEM
+OBJECT MODULE PLACED IN .\OBJ\System.obj
+COMPILER INVOKED BY: C:\Keil\C51\BIN\C51.EXE SRC\System.c BROWSE DEBUG OBJECTEXTEND PRINT(.\LST\System.lst) OBJECT(.\OBJ
+                    -\System.obj)
+
+line level    source
+
+   1          /*-----------------------------*
+   2           *  include head files         *
+   3           *----------------------------*/
+   4          #include ".\Head\HD_cfg.h"
+   5          #include ".\Head\System.h"
+   6          #include ".\Head\Time.h"
+   7          #include ".\Head\TempCtr.h"
+   8          #include ".\Head\Script.h"
+   9          #include ".\head\SinoLib.h"
+  10          
+  11          /*-----------------------------*
+  12           *  Macros for constants       *
+  13           *----------------------------*/
+  14          
+  15          /*-----------------------------*
+  16           *  Macros for others          *
+  17           *----------------------------*/
+  18          
+  19          
+  20          /*-----------------------------*
+  21           *  type definitions           *
+  22           *----------------------------*/
+  23          
+  24          
+  25          /*-----------------------------*
+  26           *  structure,union and enum   *
+  27           *----------------------------*/
+  28          
+  29          
+  30          /*-----------------------------*
+  31           *  public functions prototypes*
+  32           *----------------------------*/
+  33          void    UIProc(void);
+  34          void    FaultCheckProc(void);
+  35          void    AutotestActivate(void);
+  36          void    EnterReset(void);
+  37          void    EnterSetup(void);
+  38          void    EnterWarm(void);
+  39          void    EnterDefault(void);
+  40          void    EnterRun(void);
+  41          void    EnterPowerDown(void);
+  42          
+  43          /*-----------------------------*
+  44           *  static functions prototypes*
+  45           *----------------------------*/
+  46          static  void    ResetProc(void);
+  47          static  void    SetupProc(void);
+  48          static  void    RunProc(void);
+  49          static  void    JudgeTimeValid(void);
+  50          static  void    FuncSetDisp(uint8 Step);
+  51          static  void    FuncRunDisp(uint8 Step);
+  52          static  void    SetDefCookTime(uint8 CookMode);
+  53          static  void    SetDefCookTemp(uint8 CookMode); 
+  54          static  void    SetDIYModeByDIY(uint8 diymode);
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 2   
+
+  55          static  void    SetCupsWater(uint8 cookmode,uint8 texture,uint8 people);
+  56          static  void    LoadVarParam(uint8 cookMode, uint8 texture,uint8 people);
+  57          static  void    WarmProc(void);
+  58          static  void    PowerDownProc(void);
+  59          static  void    ErrorProc(void);
+  60          static  void    SelfCheckProc(void);
+  61          
+  62          /*-----------------------------*
+  63           *  public variable declaration*
+  64           *----------------------------*/
+  65          uint8   m_u8SysID;                          //系统状态变量
+  66          uint8   m_u8PrevSysID;                  //掉电之前系统状态变量
+  67          uint8   m_u8CookMode;                   //烹饪模式，0~22
+  68          uint8   m_u8DIYMode;                //DIY模式:DIY1,DIY2,DIY3,DIY4,DIY5  
+  69          uint8   m_u8Age;                    //Babyporridge 年龄选择
+  70          uint8   m_u8Feel;                           //口感模式，0 无效，1 Nutritious，  2 Hard， 3 Normal，  4 Soft
+  71          uint8   m_u8People;                 //人数
+  72          uint16  m_u16Cups;                      //食物量杯数
+  73          uint16  m_u16Water;                 //水量
+  74          uint8   m_u8Foodtype;               //区分需要放入两种食物的功能
+  75          uint8   m_u8Watertype;              //区分第一次和第二次放水
+  76          uint8   m_u8PreTmp;                                     //温度初始值
+  77          uint8   m_u8TimeDispCnt;                        //时间闪烁显示计数器
+  78          uint8   m_u8ChkCnt;                             
+  79          uint8   u8CookTemp;                                 //烹饪温度
+  80          uint8   MaxCookTemp;                            //最高的烹饪温度
+  81          uint8   DefCookTemp;                //默认的烹饪温度
+  82          uint8   MinCookTemp;                //最低的烹饪温度
+  83          uint8   idata  tmMaxCookTime[3];    //最长的烹饪时间
+  84          uint8   idata  tmDefCookTime[3];    //默认的烹饪时间
+  85          uint8   idata  tmMinCookTime[3];        //最短的烹饪时间
+  86          uint8   idata  tmCalCookTime[3];        //预约结束，烹饪开始时间
+  87          uint8   idata  tmIntCookTime[3];        //间隔时间==预约设定时间-当前时间
+  88          uint8   idata  tmMinBookTime[3];        //最短的预约时间
+  89          uint8   idata  m_u8DispDelayCnt;    //显示延时计数器
+  90          uint8   idata  m_u8CurTimeDispCnt;
+  91          uint8   idata  m_u8AutoRunCnt;          //自动运行计数器
+  92          uint8   idata  u8ErrorCnt;          //报警计数器
+  93          uint8   idata  m_u8SelfChkStep;         //自检步骤
+  94          uint16  idata  u16PoweronCnt;       //上电自检计数器
+  95          
+  96          uint8   idata   m_u8SetStep;            //设置阶段步骤
+  97          uint8   idata   m_u8RunStep;        //运行阶段步骤
+  98          uint8   idata   tmDebugTime[3];     //调试用
+  99          uint8   xdata   m_u8DIYCookmode; 
+ 100          uint8   xdata   m_u8DIYFeel;
+ 101          uint8   xdata   m_u8DIYPeople;
+ 102          uint8   xdata   m_u8DIYAge;
+ 103          uint8   xdata   m_u8LastAge;
+ 104          uint8   xdata   m_u8ResetCnt;
+ 105          //烹饪时间表                                               Steam   Slowck  Browning Pasta   Bake    Soup    
+ 106          uint16  code    MinCookTime_Table[]     = {0x0005, 0x0005, 0x0005, 0x0003, 0x0005, 0x0005, 
+ 107          //                                     Bread   Dessert Cream   Yogurt  Jam     DIY     Reheat
+ 108                                                 0x0005, 0x0005, 0x0030, 0x0100, 0x0005, 0x0001, 0x0005}; 
+ 109          uint16  code    DefCookTime_Table[]     = {0x0030, 0x0130, 0x0020, 0x0008, 0x0040, 0x0040, 
+ 110                                                 0x0030, 0x0045, 0x0200, 0x0800, 0x0030, 0x0030, 0x0020};
+ 111          uint16  code    MaxCookTime_Table[]     = {0x0300, 0x0900, 0x0130, 0x0100, 0x0400, 0x0300, 
+ 112                                                 0x0900, 0x0200, 0x0400, 0x2400, 0x0200, 0x0900, 0x0100};
+ 113          
+ 114          //烹饪温度表                                           Slowcook Dessert  Crust    Bake   Bread   Reheat   DIY
+ 115          uint8   code    MinCookTemp_Table[]     = {0x50,    0x64,    0x64,    0x64,  0x1E,   0x50,    0x28};
+ 116          uint8   code    DefCookTemp_Table[] = {0x64,    0x8C,    0xA0,    0x91,  0x28,   0x64,    0x64};
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 3   
+
+ 117          uint8   code    MaxCookTemp_Table[] = {0x64,    0xA0,    0xA0,    0xA0,  0x28,   0x64,    0xA0};
+ 118          
+ 119          
+ 120          //Food cups                         2P     4P     6P     8P     10P     12P
+ 121          uint16  code    FoodCups[6][6] = { {0x0125,0x0250,0x0375,0x0500,0x0650,0x0800},   //01 & 02
+ 122                                             {0x0100,0x0200,0x0300,0x0425,0x0425,0x0425},   //03
+ 123                                             {0x0125,0x0200,0x0375,0x0500,0x0650,0x0650},   //04
+ 124                                             {0x0100,0x0200,0x0300,0x0400,0x0500,0x0500},   //05 & 09 & 08_P1
+ 125                                             {0x0100,0x0200,0x0300,0x0450,0x0450,0x0450},   //06
+ 126                                             {0x0050,0x0100,0x0150,0x0200,0x0200,0x0200} }; //08_P2
+ 127                                               
+ 128          uint16  code   WaterCups[11][6]= { {0x0220,0x0440,0x0660,0x0880,0x1100,0x1320},   //01_T1 & 01_T3 & 01_T4 
+             -& 02_T1 & 02_T3
+ 129                                             {0x0200,0x0400,0x0600,0x0800,0x1000,0x1200},   //01_T2 & 05_T1 & 05_T2
+ 130                                             {0x0180,0x0360,0x0540,0x0720,0x0900,0x1080},   //02_T2 & 04_T2
+ 131                                             {0x0240,0x0480,0x0720,0x0960,0x1200,0x1440},   //02_T4
+ 132                                             {0x0500,0x1000,0x1500,0x2000,0x2000,0x2000},   //03_T1 & 03_T4
+ 133                                             {0x0260,0x0520,0x0780,0x1040,0x1300,0x1300},   //03_T2 & 05_T4
+ 134                                             {0x0280,0x0560,0x0840,0x1120,0x1400,0x1400},   //04_T1 & 04_T3
+ 135                                             {0x0300,0x0600,0x0900,0x1200,0x1200,0x1200},   //06_P1
+ 136                                             {0x0520,0x1040,0x1560,0x2080,0x2080,0x2080},   //09
+ 137                                             {0x0360,0x0720,0x1080,0x1440,0x1440,0x1440},   //08
+ 138                                             {0x0190,0x0380,0x0570,0x0760,0x0760,0x0760} }; //06_P2
+ 139          /*-----------------------------*
+ 140           *  static variable declaration*
+ 141           *----------------------------*/
+ 142          
+ 143          
+ 144          
+ 145          /*-----------------------------------------------------------------------------*
+ 146           *  Function Description:                                                      *
+ 147           *      人机界面处理                                                                               *
+ 148           *  Parameters:                                                                *
+ 149           *      None                                                                   *
+ 150           *  Return                                                                     *
+ 151           *      None                                                                   *
+ 152           *----------------------------------------------------------------------------*/
+ 153          void    UIProc(void)
+ 154          {
+ 155   1              switch(m_u8SysID)
+ 156   1              {
+ 157   2                      case    SYS_ID_RESET:
+ 158   2                              ResetProc();
+ 159   2                              break;
+ 160   2                                      
+ 161   2              case    SYS_ID_SETUP:
+ 162   2                          SetupProc();
+ 163   2                  break;
+ 164   2      
+ 165   2                      case    SYS_ID_RUN:
+ 166   2                              RunProc();
+ 167   2                              break;
+ 168   2      
+ 169   2              case    SYS_ID_WARM:
+ 170   2                          WarmProc();
+ 171   2                              break;
+ 172   2      
+ 173   2              case    SYS_ID_POWRDOWN:
+ 174   2                  PowerDownProc();
+ 175   2                  break;
+ 176   2                  
+ 177   2              case    SYS_ID_ERROR:
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 4   
+
+ 178   2                          ErrorProc();
+ 179   2                              break;
+ 180   2                              
+ 181   2              case    SYS_ID_CHECK:
+ 182   2                              SelfCheckProc();
+ 183   2                              break;
+ 184   2                              
+ 185   2                      default:
+ 186   2                              break;  
+ 187   2              }
+ 188   1      }
+ 189          
+ 190          
+ 191          /*-----------------------------------------------------------------------------*
+ 192           *  Function Description:                                                      *
+ 193           *              复位状态处理                                                                       *
+ 194           *  Parameters:                                                                *
+ 195           *      None                                                                   *
+ 196           *  Return                                                                     *
+ 197           *      None                                                                   *
+ 198           *----------------------------------------------------------------------------*/
+ 199          static  void    ResetProc(void)
+ 200          {
+ 201   1              if(bSys_1000MS)
+ 202   1              {
+ 203   2                  m_u8ResetCnt++;
+ 204   2              if(m_u8ResetCnt>1)
+ 205   2              {
+ 206   3                  if(Flash.ROM[SSP_MUSIC_EN]==0xA5)
+ 207   3                      {
+ 208   4                              bKeyMusic_EN = 0;       //关闭按键声音
+ 209   4                      }
+ 210   3                      else
+ 211   3                      {
+ 212   4                              bKeyMusic_EN = 1;               
+ 213   4                      }
+ 214   3                  EnterDefault();   
+ 215   3              }
+ 216   2              }                                                                       
+ 217   1      }
+ 218          
+ 219          /*-----------------------------------------------------------------------------*
+ 220           *  Function Description:                                                      *
+ 221           *      设置状态处理                                                                               *
+ 222           *  Parameters:                                                                *
+ 223           *      None                                                                   *
+ 224           *  Return                                                                     *
+ 225           *      None                                                                   *
+ 226           *----------------------------------------------------------------------------*/
+ 227          static  void    SetupProc(void)
+ 228          {
+ 229   1              uint16 u16Key;
+ 230   1              u16Key = GetKey();
+ 231   1      
+ 232   1          if(u16Key>0) 
+ 233   1          {   
+ 234   2              if(m_u8DispDelayCnt==0)
+ 235   2              {
+ 236   3                  u16Key = 0;             //从黑屏唤醒时按键不响应，只刷新显示
+ 237   3                  FuncSetDisp(m_u8SetStep);
+ 238   3              }
+ 239   2              LedOn(BIT_LED_BKL);         //按下任意按键打开背光
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 5   
+
+ 240   2              m_u8DispDelayCnt = 60;
+ 241   2          }
+ 242   1      
+ 243   1          if(TstBit(u16Key,BIT_KEY_CANCEL))
+ 244   1          {
+ 245   2              //返回上一个设置
+ 246   2              if(IsNewKey())
+ 247   2              {
+ 248   3                  switch(m_u8SetStep)
+ 249   3                  {
+ 250   4                      case    SET_PHASE_MENU:
+ 251   4                          if(m_u8DIYMode>0)
+ 252   4                          {
+ 253   5                              m_u8SetStep = SET_PHASE_DIY;
+ 254   5                              FuncSetDisp(m_u8SetStep); 
+ 255   5                          }
+ 256   4                          else
+ 257   4                          {
+ 258   5                              EnterSetup();
+ 259   5                          }
+ 260   4                          break;
+ 261   4                            
+ 262   4                      case    SET_PHASE_DIY:
+ 263   4                          EnterSetup();
+ 264   4                          break;
+ 265   4                          
+ 266   4                      case    SET_PHASE_TEXTURE:
+ 267   4        //                  m_u8Feel = 1;   //口感默认值
+ 268   4                          m_u8SetStep = SET_PHASE_MENU;
+ 269   4                          FuncSetDisp(m_u8SetStep); 
+ 270   4                          break;
+ 271   4      
+ 272   4                      case    SET_PHASE_PEOPLE:
+ 273   4       //                   m_u8People = 2; //人数默认值
+ 274   4                          if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS)||(m_u8Cook
+             -Mode==FUNC_ID_CHICKPEAS))
+ 275   4                          {
+ 276   5                              m_u8SetStep = SET_PHASE_MENU;
+ 277   5                          }
+ 278   4                          else
+ 279   4                          {
+ 280   5                              m_u8SetStep = SET_PHASE_TEXTURE;
+ 281   5                          }
+ 282   4                          FuncSetDisp(m_u8SetStep);
+ 283   4                          break;
+ 284   4                          
+ 285   4                      case    SET_PHASE_PUTBASKET:
+ 286   4                      case    SET_PHASE_FOODCUPS:
+ 287   4                          m_u8SetStep = SET_PHASE_PEOPLE;
+ 288   4                          FuncSetDisp(m_u8SetStep);
+ 289   4                          break;
+ 290   4      
+ 291   4                      case    SET_PHASE_WATERCUPS:   
+ 292   4                          if(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS)
+ 293   4                          {
+ 294   5                              m_u8Foodtype = 1;    //放入第一种食物
+ 295   5                          }
+ 296   4                          else
+ 297   4                          {
+ 298   5                              m_u8Foodtype = 0;    //不显示食物类型
+ 299   5                          }
+ 300   4                          m_u8SetStep = SET_PHASE_FOODCUPS;
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 6   
+
+ 301   4                          FuncSetDisp(m_u8SetStep);
+ 302   4                          break;
+ 303   4      
+ 304   4                      case    SET_PHASE_DELAY:
+ 305   4                          if(m_u8CookMode>9)
+ 306   4                          {
+ 307   5                              if(m_u8CookMode==FUNC_ID_RISOTTO)
+ 308   5                              {
+ 309   6                                  m_u8SetStep = SET_PHASE_MENU;
+ 310   6                              }
+ 311   5                              else
+ 312   5                              {
+ 313   6                                  if(bTimeAdjSt)              //判断是否修改了默认时间
+ 314   6                                  {
+ 315   7                                      bTempDisp_EN = 1;               //允许调整温度
+ 316   7                                      bTimeDisp_EN = 1;               //允许调整烹饪时间
+ 317   7                                      bBookTime_EN = 0;           //不允许调整预约时间
+ 318   7                                      bCalBookTime_EN = 0;
+ 319   7                                      m_u8SetStep = SET_PHASE_TIME;
+ 320   7                                  }
+ 321   6                                  else
+ 322   6                                  {
+ 323   7                                      if(m_u8CookMode==FUNC_ID_DIY)                         
+ 324   7                                      {
+ 325   8                                          SetDIYModeByDIY(m_u8DIYMode);
+ 326   8                                          m_u8SetStep = SET_PHASE_DIYDEFAULT;
+ 327   8                                      }
+ 328   7                                      else
+ 329   7                                      {
+ 330   8                                          m_u8SetStep = SET_PHASE_DEFAULT;
+ 331   8                                      }
+ 332   7                                  }
+ 333   6                              }
+ 334   5                          }
+ 335   4                          else
+ 336   4                          {
+ 337   5                              m_u8SetStep = SET_PHASE_WATERCUPS;
+ 338   5                          }
+ 339   4                          FuncSetDisp(m_u8SetStep);
+ 340   4                          break;
+ 341   4      
+ 342   4                      case    SET_PHASE_TIME:
+ 343   4                          if(bBookTime_EN)
+ 344   4                          {
+ 345   5                              bBookTime_EN = 0;           //清预约
+ 346   5                              bCalBookTime_EN = 0;
+ 347   5                              tmBookTime[1] = 0;
+ 348   5                              tmBookTime[2] = 0;
+ 349   5                              m_u8SetStep = SET_PHASE_DELAY;
+ 350   5                          }
+ 351   4                          else
+ 352   4                          {
+ 353   5                              if(u8CookTemp>0)
+ 354   5                              {
+ 355   6                                 m_u8SetStep = SET_PHASE_TEMPERATURE;
+ 356   6                              }
+ 357   5                              else
+ 358   5                              {
+ 359   6                                  SetDefCookTime(m_u8CookMode);
+ 360   6                                  tmCookTime[0] = 59;
+ 361   6                                  tmCookTime[1] = tmDefCookTime[1];   //默认烹饪时间
+ 362   6                                  tmCookTime[2] = tmDefCookTime[2];
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 7   
+
+ 363   6                                  bTimeAdjSt = 0;
+ 364   6                                  bTempDisp_EN = 0;
+ 365   6                                  bTimeDisp_EN = 0;    
+ 366   6                                  m_u8SetStep = SET_PHASE_DEFAULT;
+ 367   6                              }
+ 368   5                          }
+ 369   4                          FuncSetDisp(m_u8SetStep);
+ 370   4                          break;
+ 371   4                          
+ 372   4                      case    SET_PHASE_TEMPERATURE:
+ 373   4                          if(m_u8CookMode==FUNC_ID_DIY)                         
+ 374   4                          {
+ 375   5                              SetDIYModeByDIY(m_u8DIYMode);
+ 376   5                              m_u8SetStep = SET_PHASE_DIYDEFAULT;
+ 377   5                          }
+ 378   4                          else
+ 379   4                          {
+ 380   5                              SetDefCookTime(m_u8CookMode);
+ 381   5                              SetDefCookTemp(m_u8CookMode);
+ 382   5                              tmCookTime[0] = 59;
+ 383   5                              tmCookTime[1] = tmDefCookTime[1];       //默认烹饪时间
+ 384   5                              tmCookTime[2] = tmDefCookTime[2];
+ 385   5                              u8CookTemp = DefCookTemp;                       //默认烹饪温度
+ 386   5                              m_u8SetStep = SET_PHASE_DEFAULT;
+ 387   5                          }
+ 388   4                          bTimeAdjSt = 0;
+ 389   4                          bTempDisp_EN = 0;
+ 390   4                          bTimeDisp_EN = 0;  
+ 391   4                          FuncSetDisp(m_u8SetStep);
+ 392   4                          break;
+ 393   4      
+ 394   4                      case    SET_PHASE_DEFAULT:
+ 395   4                          if(m_u8CookMode==FUNC_ID_REHEAT)
+ 396   4                                              {
+ 397   5                                                      EnterSetup();
+ 398   5                                              }
+ 399   4                                              else
+ 400   4                                              {
+ 401   5                                                      m_u8SetStep = SET_PHASE_MENU;
+ 402   5                                              }               
+ 403   4                          FuncSetDisp(m_u8SetStep);
+ 404   4                          break;
+ 405   4                          
+ 406   4                      case    SET_PHASE_AGE:
+ 407   4                          m_u8SetStep = SET_PHASE_MENU;
+ 408   4                          FuncSetDisp(m_u8SetStep);
+ 409   4                          break;
+ 410   4      
+ 411   4                      case    SET_PHASE_DIYDEFAULT:
+ 412   4                          if(m_u8CookMode==FUNC_ID_DIY)
+ 413   4                          {
+ 414   5                              m_u8SetStep = SET_PHASE_DIY;
+ 415   5                          }
+ 416   4                          FuncSetDisp(m_u8SetStep); 
+ 417   4                          break;
+ 418   4                      default:
+ 419   4                          break;
+ 420   4                  }
+ 421   3              }
+ 422   2      
+ 423   2              if((u16Key==VAL_KEY_CANCEL)&&(g_u16KeyRpyCnt==15))      //长按返回默认状态
+ 424   2              {
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 8   
+
+ 425   3                  EnterDefault();
+ 426   3                  PlaySound(MusicPoweron);
+ 427   3              }
+ 428   2          }
+ 429   1      
+ 430   1          if(TstBit(u16Key,BIT_KEY_STOP))
+ 431   1          {
+ 432   2              if(IsNewKey()){}
+ 433   2       
+ 434   2              if((u16Key==VAL_KEY_STOP)&&(g_u16KeyRpyCnt==20))        //长按3S进入OFF模式
+ 435   2              {
+ 436   3                  EnterPowerDown();
+ 437   3                  PlaySound(MusicPoweron);
+ 438   3                  return;
+ 439   3              }
+ 440   2          }
+ 441   1      
+ 442   1          if(TstBit(u16Key,BIT_KEY_KEEPWARM))
+ 443   1          {
+ 444   2              if(IsNewKey())
+ 445   2              {
+ 446   3                  EnterWarm();
+ 447   3                  return;
+ 448   3              }
+ 449   2          }
+ 450   1      
+ 451   1          if(TstBit(u16Key,BIT_KEY_REHEAT))
+ 452   1          {
+ 453   2              if(IsNewKey())
+ 454   2              {    
+ 455   3                  m_u8SetStep = SET_PHASE_DEFAULT;
+ 456   3                  m_u8CookMode = FUNC_ID_REHEAT;
+ 457   3                  SetDefCookTime(m_u8CookMode);
+ 458   3                  SetDefCookTemp(m_u8CookMode);
+ 459   3                  tmCookTime[0] = 59;
+ 460   3                  tmCookTime[1] = tmDefCookTime[1];   //默认烹饪时间
+ 461   3                  tmCookTime[2] = tmDefCookTime[2];
+ 462   3                  u8CookTemp = DefCookTemp;                   //默认烹饪温度
+ 463   3                  m_u8Feel = 0;
+ 464   3                  m_u8People = 0;
+ 465   3                  FuncSetDisp(m_u8SetStep);
+ 466   3              }
+ 467   2          }
+ 468   1      
+ 469   1          if(TstBit(u16Key,BIT_KEY_DIY))
+ 470   1          {
+ 471   2              if(IsNewKey())
+ 472   2              {
+ 473   3                  if(m_u8SetStep==SET_PHASE_MENU)
+ 474   3                  {
+ 475   4                      m_u8DIYMode = Flash.ROM[SSP_LASTDIY];
+ 476   4                      if((m_u8DIYMode==0)||(m_u8DIYMode>5))
+ 477   4                      {
+ 478   5                          m_u8DIYMode = 1;
+ 479   5                      }
+ 480   4                      m_u8SetStep = SET_PHASE_DIY;
+ 481   4                      SetDIYModeByDIY(m_u8DIYMode);
+ 482   4                      FuncSetDisp(m_u8SetStep);
+ 483   4                  }
+ 484   3              }
+ 485   2          }
+ 486   1      
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 9   
+
+ 487   1              if(TstBit(u16Key,BIT_KEY_MENU))
+ 488   1              {
+ 489   2                      if(IsNewKey())
+ 490   2                      {
+ 491   3                          if(m_u8SetStep==SET_PHASE_DIYDEFAULT)
+ 492   3                  {
+ 493   4                      m_u8SetStep = SET_PHASE_MENU;
+ 494   4                      m_u8CookMode = m_u8DIYCookmode;
+ 495   4                      tmCookTime[0] = 59;
+ 496   4                      tmCookTime[1] = 0;
+ 497   4                      tmCookTime[2] = 0;
+ 498   4                      u8CookTemp = 0;
+ 499   4                      if(m_u8CookMode>10)
+ 500   4                      {
+ 501   5                          SetDefCookTime(m_u8CookMode);
+ 502   5                          SetDefCookTemp(m_u8CookMode);
+ 503   5                          tmCookTime[0] = 59;
+ 504   5                          tmCookTime[1] = tmDefCookTime[1];   //默认烹饪时间
+ 505   5                          tmCookTime[2] = tmDefCookTime[2];
+ 506   5                          u8CookTemp = DefCookTemp;                   //默认烹饪温度
+ 507   5                      }
+ 508   4                      else
+ 509   4                      {
+ 510   5                          m_u8Feel = m_u8DIYFeel;
+ 511   5                          m_u8People = m_u8DIYPeople;
+ 512   5                          m_u8Age = m_u8DIYAge;
+ 513   5                      }
+ 514   4                      FuncSetDisp(m_u8SetStep);
+ 515   4                  }
+ 516   3                  else
+ 517   3                  {
+ 518   4                      if(m_u8SetStep==SET_PHASE_MENU)
+ 519   4                      {
+ 520   5                          if(m_u8CookMode<=9)
+ 521   5                          {
+ 522   6                              m_u8CookMode = FUNC_ID_RISOTTO;     //切换到经典菜单
+ 523   6                          }
+ 524   5                          else
+ 525   5                          {
+ 526   6                              m_u8CookMode = FUNC_ID_WHITERICE;   //切换到营养菜单
+ 527   6                          }
+ 528   5                          tmCookTime[0] = 59;
+ 529   5                          tmCookTime[1] = 0;  
+ 530   5                          tmCookTime[2] = 0;
+ 531   5                          u8CookTemp = 0;             
+ 532   5                          m_u8Feel = 0;
+ 533   5                          m_u8People = 0;
+ 534   5                          if(m_u8CookMode<=9)
+ 535   5                          {
+ 536   6                              m_u8Feel = 1;
+ 537   6                              m_u8People = 2;
+ 538   6                          }
+ 539   5                              else
+ 540   5                          {
+ 541   6                              SetDefCookTime(m_u8CookMode);
+ 542   6                              SetDefCookTemp(m_u8CookMode);
+ 543   6                              tmCookTime[0] = 59;
+ 544   6                              tmCookTime[1] = tmDefCookTime[1];       //默认烹饪时间
+ 545   6                              tmCookTime[2] = tmDefCookTime[2];
+ 546   6                              u8CookTemp = DefCookTemp;                       //默认烹饪温度
+ 547   6                          }
+ 548   5                          FuncSetDisp(m_u8SetStep);
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 10  
+
+ 549   5                      }
+ 550   4                  }
+ 551   3                      }
+ 552   2      
+ 553   2              if(g_u16KeyRpyCnt==36)                          //长按5S                                                
+ 554   2                      {
+ 555   3                              bKeyMusic_EN ^= 1;
+ 556   3                              if(bKeyMusic_EN)
+ 557   3                              {
+ 558   4                                      Flash.ROM[SSP_MUSIC_EN] = 0;    
+ 559   4                              }
+ 560   3                              else
+ 561   3                              {
+ 562   4                                      Flash.ROM[SSP_MUSIC_EN] = 0xA5;
+ 563   4                              }  
+ 564   3                              SSP_Flag = SSP_ERASE_FLAG;
+ 565   3                  EraseFlash(0x0000);                 //擦除类EEPROM
+ 566   3                  SSP_Flag = SSP_WRITE_FLAG;
+ 567   3                  WriteFlash(0x0000,(uint8*)&Flash);
+ 568   3                              PlaySound(MusicPoweron);
+ 569   3                      }
+ 570   2              }                       
+ 571   1      
+ 572   1              if(TstBit(u16Key,BIT_KEY_PLUS))
+ 573   1              {
+ 574   2              if((IsNewKey())||(g_u16KeyRpyCnt>15))
+ 575   2              {
+ 576   3                  if(m_u8SetStep==SET_PHASE_MENU)             
+ 577   3                  {       
+ 578   4                      if(m_u8CookMode>=21) m_u8CookMode = FUNC_ID_WHITERICE;
+ 579   4                      else m_u8CookMode++;
+ 580   4                      tmCookTime[0] = 59;
+ 581   4                      tmCookTime[1] = 0;      
+ 582   4                      tmCookTime[2] = 0;
+ 583   4                      u8CookTemp = 0;         
+ 584   4                      m_u8Feel = 0;
+ 585   4                      m_u8People = 0;
+ 586   4                      if(m_u8CookMode<=9)
+ 587   4                      {
+ 588   5                          m_u8Feel = 1;
+ 589   5                          m_u8People = 2;
+ 590   5                      }
+ 591   4                      else
+ 592   4                      {
+ 593   5                          SetDefCookTime(m_u8CookMode);
+ 594   5                          SetDefCookTemp(m_u8CookMode);
+ 595   5                          tmCookTime[0] = 59;
+ 596   5                          tmCookTime[1] = tmDefCookTime[1];   //默认烹饪时间
+ 597   5                          tmCookTime[2] = tmDefCookTime[2];
+ 598   5                          u8CookTemp = DefCookTemp;                   //默认烹饪温度
+ 599   5                      }
+ 600   4                      FuncSetDisp(m_u8SetStep); 
+ 601   4                  }
+ 602   3      
+ 603   3                  if(m_u8SetStep==SET_PHASE_TEXTURE)
+ 604   3                  {   
+ 605   4                      if((m_u8CookMode==FUNC_ID_WHITERICE)||(m_u8CookMode==FUNC_ID_BROWNRICE))
+ 606   4                      {
+ 607   5                          if(m_u8Feel<=1) m_u8Feel = 4;
+ 608   5                          else m_u8Feel--;
+ 609   5                      }
+ 610   4                      if(m_u8CookMode==FUNC_ID_QUINOA)
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 11  
+
+ 611   4                      {
+ 612   5                          if(m_u8Feel<=1) m_u8Feel = 3;
+ 613   5                          else m_u8Feel--;
+ 614   5                      }
+ 615   4                      if((m_u8CookMode==FUNC_ID_LENTILS)||(m_u8CookMode==FUNC_ID_BUCKWHEAT))
+ 616   4                      {
+ 617   5                          switch(m_u8Feel)
+ 618   5                          {
+ 619   6                              case    1:
+ 620   6                                  m_u8Feel = 4;
+ 621   6                                  break;
+ 622   6                              case    2:
+ 623   6                                  m_u8Feel = 1;
+ 624   6                                  break;
+ 625   6                              case    4:
+ 626   6                                  m_u8Feel = 2;
+ 627   6                                  break;
+ 628   6                              default:
+ 629   6                                  break;
+ 630   6                          }
+ 631   5                      }
+ 632   4                                      if(m_u8CookMode==FUNC_ID_BEANS)
+ 633   4                                      {
+ 634   5                                              if(m_u8Feel==1) 
+ 635   5                                              {
+ 636   6                                                      m_u8Feel = 3;
+ 637   6                                              }
+ 638   5                                              else
+ 639   5                                              {
+ 640   6                                                      m_u8Feel = 1;
+ 641   6                                              }
+ 642   5                                      }
+ 643   4                      FuncSetDisp(m_u8SetStep);   
+ 644   4                  }
+ 645   3      
+ 646   3                  if(m_u8SetStep==SET_PHASE_PEOPLE)
+ 647   3                  {
+ 648   4                      if((m_u8CookMode==FUNC_ID_WHITERICE)||(m_u8CookMode==FUNC_ID_BROWNRICE))
+ 649   4                      {
+ 650   5                          if(m_u8People>=12)  m_u8People = 2;
+ 651   5                          else m_u8People += 2;
+ 652   5                      }
+ 653   4                      if((m_u8CookMode==FUNC_ID_BUCKWHEAT)||(m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_I
+             -D_CHICKPEAS)
+ 654   4                      ||(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS))
+ 655   4                      {
+ 656   5                          if(m_u8People>=8)  m_u8People = 2;
+ 657   5                          else m_u8People += 2;
+ 658   5                      }
+ 659   4                      if((m_u8CookMode==FUNC_ID_QUINOA)||(m_u8CookMode==FUNC_ID_LENTILS))
+ 660   4                      {
+ 661   5                          if(m_u8People>=10)  m_u8People = 2;
+ 662   5                          else m_u8People += 2;
+ 663   5                      }
+ 664   4                      if(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS)
+ 665   4                      {
+ 666   5                          m_u8Foodtype = 1;
+ 667   5                      }
+ 668   4                      SetCupsWater(m_u8CookMode,m_u8Feel,m_u8People);
+ 669   4                      FuncSetDisp(m_u8SetStep);  
+ 670   4                  }
+ 671   3      
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 12  
+
+ 672   3                  if(m_u8SetStep==SET_PHASE_TIME)
+ 673   3                  {
+ 674   4                      if(bTimeDisp_EN==1)     
+ 675   4                      {
+ 676   5                          //判断烹饪时间是否溢出 
+ 677   5                                      if((tmCookTime[2]==tmMaxCookTime[2])&&(tmCookTime[1]==tmMaxCookTime[1]))
+ 678   5                                      {
+ 679   6                                              tmCookTime[2] = tmMinCookTime[2];
+ 680   6                                              tmCookTime[1] = tmMinCookTime[1];
+ 681   6                                  }
+ 682   5                                  else
+ 683   5                                      {
+ 684   6                                          if((m_u8CookMode==FUNC_ID_BROWNING)||(m_u8CookMode==FUNC_ID_PASTA)||(m_u8CookMode==FUNC_ID_DIY
+             -))                        
+ 685   6                                              {
+ 686   7                                                  tmCookTime[1]++;
+ 687   7                                              }
+ 688   6                                              else 
+ 689   6                                              {
+ 690   7                                                  if(m_u8CookMode==FUNC_ID_YOGURT)
+ 691   7                                                      {
+ 692   8                                                          tmCookTime[1] += 30;
+ 693   8                                                      }
+ 694   7                                                      else
+ 695   7                                                      {
+ 696   8                                                      tmCookTime[1] += 5; 
+ 697   8                                                      }
+ 698   7                                              }       
+ 699   6                                      }
+ 700   5                                      JudgeTimeValid();               //判断时间是否在合理范围内       
+ 701   5                                  }
+ 702   4      
+ 703   4                      if(bBookTime_EN)                        //预约时间是否允许调整
+ 704   4                                  {                   
+ 705   5                                      //判断预约时间是否溢出
+ 706   5                                      if((tmBookTime[2]==24)&&(tmBookTime[1]==0))
+ 707   5                                      {
+ 708   6                                              tmBookTime[2] = tmMinBookTime[2];
+ 709   6                                              tmBookTime[1] = tmMinBookTime[1];
+ 710   6                                      }
+ 711   5                                      else
+ 712   5                                      {   
+ 713   6                                              tmBookTime[1] = (tmBookTime[1]/5)*5+5;
+ 714   6                                      }
+ 715   5                                          JudgeTimeValid();           //判断时间是否在合理范围内
+ 716   5                                  }
+ 717   4                      FuncSetDisp(m_u8SetStep);  
+ 718   4                  }
+ 719   3      
+ 720   3                  if(m_u8SetStep==SET_PHASE_TEMPERATURE)
+ 721   3                  {
+ 722   4                      if(bTempDisp_EN)                        //温度是否允许调整
+ 723   4                                  {
+ 724   5                                              //判断烹饪温度是否溢出
+ 725   5                                              if(u8CookTemp==MaxCookTemp)
+ 726   5                                              {
+ 727   6                                                      u8CookTemp = MinCookTemp;
+ 728   6                                              }
+ 729   5                                              else
+ 730   5                                              {
+ 731   6                                                  if((m_u8CookMode==FUNC_ID_SLOWCOOK)||(m_u8CookMode==FUNC_ID_BREADRISING))
+ 732   6                              {
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 13  
+
+ 733   7                                  u8CookTemp += 10;
+ 734   7                              }
+ 735   6                              else
+ 736   6                              {
+ 737   7                                  u8CookTemp += 5;
+ 738   7                              }
+ 739   6                                              }
+ 740   5                                              JudgeTimeValid();       //判断温度是否在合理范围内
+ 741   5                                      }                       
+ 742   4                      FuncSetDisp(m_u8SetStep);  
+ 743   4                              }
+ 744   3      
+ 745   3                  if(m_u8SetStep==SET_PHASE_DIY)
+ 746   3                  {
+ 747   4                      if(m_u8DIYMode>=5)  m_u8DIYMode = 1;
+ 748   4                      else m_u8DIYMode++;
+ 749   4                      SetDIYModeByDIY(m_u8DIYMode);
+ 750   4                      FuncSetDisp(m_u8SetStep);  
+ 751   4                  }
+ 752   3      
+ 753   3                  if(m_u8SetStep==SET_PHASE_AGE)
+ 754   3                  {
+ 755   4                      if(m_u8Age>=4) m_u8Age = 1;
+ 756   4                      else m_u8Age++;
+ 757   4                      m_u8Feel = 0;
+ 758   4                      m_u8People = 0;
+ 759   4                      FuncSetDisp(m_u8SetStep);  
+ 760   4                  }
+ 761   3              }
+ 762   2          }
+ 763   1      
+ 764   1              if(TstBit(u16Key,BIT_KEY_MINUS))
+ 765   1              {               
+ 766   2              if((IsNewKey())||(g_u16KeyRpyCnt>15))
+ 767   2              {
+ 768   3                  if(m_u8SetStep==SET_PHASE_MENU)             
+ 769   3                  {       
+ 770   4                      if(m_u8CookMode<=1) m_u8CookMode = FUNC_ID_JAM;
+ 771   4                      else m_u8CookMode--;
+ 772   4                      tmCookTime[0] = 59;
+ 773   4                      tmCookTime[1] = 0;      
+ 774   4                      tmCookTime[2] = 0;
+ 775   4                      u8CookTemp = 0;         
+ 776   4                      m_u8Feel = 0;
+ 777   4                      m_u8People = 0;
+ 778   4                      if(m_u8CookMode<=9)
+ 779   4                      {
+ 780   5                          m_u8Feel = 1;
+ 781   5                          m_u8People = 2;
+ 782   5                      }
+ 783   4                      else
+ 784   4                      {
+ 785   5                          SetDefCookTime(m_u8CookMode);
+ 786   5                          SetDefCookTemp(m_u8CookMode);
+ 787   5                          tmCookTime[0] = 59;
+ 788   5                          tmCookTime[1] = tmDefCookTime[1];   //默认烹饪时间
+ 789   5                          tmCookTime[2] = tmDefCookTime[2];
+ 790   5                          u8CookTemp = DefCookTemp;                   //默认烹饪温度
+ 791   5                      }
+ 792   4                      FuncSetDisp(m_u8SetStep); 
+ 793   4                  }
+ 794   3      
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 14  
+
+ 795   3                  if(m_u8SetStep==SET_PHASE_TEXTURE)
+ 796   3                  {          
+ 797   4                      if((m_u8CookMode==FUNC_ID_WHITERICE)||(m_u8CookMode==FUNC_ID_BROWNRICE))
+ 798   4                      {
+ 799   5                          if(m_u8Feel>=4) m_u8Feel = 1;
+ 800   5                          else m_u8Feel++;
+ 801   5                      }
+ 802   4                      if(m_u8CookMode==FUNC_ID_QUINOA)
+ 803   4                      {
+ 804   5                          if(m_u8Feel>=3) m_u8Feel = 1;
+ 805   5                          else m_u8Feel++;
+ 806   5                      }
+ 807   4                      if((m_u8CookMode==FUNC_ID_LENTILS)||(m_u8CookMode==FUNC_ID_BUCKWHEAT))
+ 808   4                      {
+ 809   5                          switch(m_u8Feel)
+ 810   5                          {
+ 811   6                              case    1:
+ 812   6                                  m_u8Feel = 2;
+ 813   6                                  break;
+ 814   6                              case    2:
+ 815   6                                  m_u8Feel = 4;
+ 816   6                                  break;
+ 817   6                              case    4:
+ 818   6                                  m_u8Feel = 1;
+ 819   6                                  break;
+ 820   6                              default:
+ 821   6                               break;
+ 822   6                          }
+ 823   5                      }
+ 824   4                                      if(m_u8CookMode==FUNC_ID_BEANS)
+ 825   4                                      {
+ 826   5                                              if(m_u8Feel==1) 
+ 827   5                                              {
+ 828   6                                                      m_u8Feel = 3;
+ 829   6                                              }
+ 830   5                                              else
+ 831   5                                              {
+ 832   6                                                      m_u8Feel = 1;
+ 833   6                                              }
+ 834   5                                      }
+ 835   4                      FuncSetDisp(m_u8SetStep); 
+ 836   4                  }
+ 837   3      
+ 838   3                  if(m_u8SetStep==SET_PHASE_PEOPLE)
+ 839   3                  {
+ 840   4                      if((m_u8CookMode==FUNC_ID_WHITERICE)||(m_u8CookMode==FUNC_ID_BROWNRICE))
+ 841   4                      {
+ 842   5                          if(m_u8People<=2)  m_u8People = 12;
+ 843   5                          else m_u8People -= 2;
+ 844   5                      }
+ 845   4                      if((m_u8CookMode==FUNC_ID_BUCKWHEAT)||(m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_I
+             -D_CHICKPEAS)
+ 846   4                      ||(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS))
+ 847   4                      {
+ 848   5                          if(m_u8People<=2)  m_u8People = 8;
+ 849   5                          else m_u8People -= 2;
+ 850   5                      }
+ 851   4                      if((m_u8CookMode==FUNC_ID_QUINOA)||(m_u8CookMode==FUNC_ID_LENTILS))
+ 852   4                      {
+ 853   5                          if(m_u8People<=2)  m_u8People = 10;
+ 854   5                          else m_u8People -= 2;
+ 855   5                      }
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 15  
+
+ 856   4                      if(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS)
+ 857   4                      {
+ 858   5                          m_u8Foodtype = 1;
+ 859   5                      }
+ 860   4                      SetCupsWater(m_u8CookMode,m_u8Feel,m_u8People);
+ 861   4                      FuncSetDisp(m_u8SetStep);  
+ 862   4                  }
+ 863   3                  
+ 864   3                  if(m_u8SetStep==SET_PHASE_TIME)
+ 865   3                  {
+ 866   4                      if(bTimeDisp_EN==1)     
+ 867   4                      {
+ 868   5                                          //判断烹饪时间是否溢出 
+ 869   5                                              if((tmCookTime[2]==tmMinCookTime[2])&&(tmCookTime[1]==tmMinCookTime[1]))
+ 870   5                                              {
+ 871   6                                                      tmCookTime[2] = tmMaxCookTime[2];
+ 872   6                                                      tmCookTime[1] = tmMaxCookTime[1];
+ 873   6                                              }
+ 874   5                                              else
+ 875   5                                              {
+ 876   6                                                      if((m_u8CookMode==FUNC_ID_BROWNING)||(m_u8CookMode==FUNC_ID_PASTA)||(m_u8CookMode==FUNC_ID_DIY))                                
+ 877   6                                                      {
+ 878   7                                                              if(tmCookTime[1]==0)
+ 879   7                                                              {
+ 880   8                                                                      tmCookTime[1] = 59;
+ 881   8                                                                      tmCookTime[2]--;
+ 882   8                                                              }
+ 883   7                                                              else
+ 884   7                                                              {
+ 885   8                                                                      tmCookTime[1]--;
+ 886   8                                                              }
+ 887   7                                                      }
+ 888   6                                                      else 
+ 889   6                                                      {
+ 890   7                                                              if(m_u8CookMode==FUNC_ID_YOGURT)
+ 891   7                                                              {
+ 892   8                                                                      if(tmCookTime[1]==0)
+ 893   8                                                                      {
+ 894   9                                                                              tmCookTime[1] = 30;
+ 895   9                                                                              tmCookTime[2]--;
+ 896   9                                                                      }
+ 897   8                                                                      else
+ 898   8                                                                      {
+ 899   9                                                                              tmCookTime[1] -= 30;
+ 900   9                                                                      }
+ 901   8                                                              }
+ 902   7                                                              else
+ 903   7                                                              {
+ 904   8                                                          if(tmCookTime[1]==0)
+ 905   8                                                          {
+ 906   9                                                                  tmCookTime[1] = 55;
+ 907   9                                                                  tmCookTime[2]--;
+ 908   9                                                          }
+ 909   8                                                          else
+ 910   8                                                          {
+ 911   9                                                                  tmCookTime[1] -= 5;
+ 912   9                                                          }  
+ 913   8                                                              }
+ 914   7                                                      }       
+ 915   6                                              }
+ 916   5                                              JudgeTimeValid();               //判断时间是否在合理范围内
+ 917   5                                      }
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 16  
+
+ 918   4      
+ 919   4                      if(bBookTime_EN)                        //预约时间是否允许调整
+ 920   4                                  {                   
+ 921   5                                      //判断预约时间是否溢出
+ 922   5                                              if((tmBookTime[2]==tmMinBookTime[2])&&(tmBookTime[1]==tmMinBookTime[1]))
+ 923   5                                              {
+ 924   6                                                      tmBookTime[2] = 24;
+ 925   6                                                      tmBookTime[1] = 0;
+ 926   6                                              }
+ 927   5                                              else
+ 928   5                                              {                                       
+ 929   6                                                      if(tmBookTime[1]==0)
+ 930   6                                                      {
+ 931   7                                                              tmBookTime[1] = 55;
+ 932   7                                                              tmBookTime[2]--;
+ 933   7                                                      }
+ 934   6                                                      else
+ 935   6                                                      {
+ 936   7                                                              tmBookTime[1] -= 5;
+ 937   7                                                      }       
+ 938   6                                              }
+ 939   5                          JudgeTimeValid();           //判断时间是否在合理范围内
+ 940   5                                      }
+ 941   4                      FuncSetDisp(m_u8SetStep);  
+ 942   4                  }
+ 943   3      
+ 944   3                  if(m_u8SetStep==SET_PHASE_TEMPERATURE)
+ 945   3                  {
+ 946   4                      if(bTempDisp_EN)                        //温度是否允许调整
+ 947   4                                  {
+ 948   5                                              //判断烹饪温度是否溢出
+ 949   5                                              if(u8CookTemp==MinCookTemp)
+ 950   5                                              {
+ 951   6                                                      u8CookTemp = MaxCookTemp;
+ 952   6                                              }
+ 953   5                                              else
+ 954   5                                              {
+ 955   6                                                  if((m_u8CookMode==FUNC_ID_SLOWCOOK)||(m_u8CookMode==FUNC_ID_BREADRISING))
+ 956   6                              {
+ 957   7                                  u8CookTemp -= 10;    
+ 958   7                              }
+ 959   6                              else
+ 960   6                              {
+ 961   7                                  u8CookTemp -= 5;
+ 962   7                              }
+ 963   6                                              }
+ 964   5                                              JudgeTimeValid();       //判断温度是否在合理范围内
+ 965   5                                      }                       
+ 966   4                      FuncSetDisp(m_u8SetStep);  
+ 967   4                              }
+ 968   3      
+ 969   3                  if(m_u8SetStep==SET_PHASE_DIY)
+ 970   3                  {
+ 971   4                      if(m_u8DIYMode<=1)  m_u8DIYMode = 5;
+ 972   4                      else m_u8DIYMode--;
+ 973   4                      SetDIYModeByDIY(m_u8DIYMode);
+ 974   4                      FuncSetDisp(m_u8SetStep);  
+ 975   4                  }
+ 976   3      
+ 977   3                  if(m_u8SetStep==SET_PHASE_AGE)
+ 978   3                  {
+ 979   4                      if(m_u8Age<=1) m_u8Age = 4;
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 17  
+
+ 980   4                      else m_u8Age--;
+ 981   4                      FuncSetDisp(m_u8SetStep);  
+ 982   4                  }
+ 983   3              }
+ 984   2              }                               
+ 985   1      
+ 986   1              if(TstBit(u16Key,BIT_KEY_TIMER))
+ 987   1              {
+ 988   2                      if(IsNewKey())
+ 989   2                      {
+ 990   3                          if((m_u8SetStep==SET_PHASE_DEFAULT)||(m_u8SetStep==SET_PHASE_DIYDEFAULT))
+ 991   3                  {
+ 992   4                      if((bTempDisp_EN==0)&&(bTimeDisp_EN==0))
+ 993   4                      {
+ 994   5                          bTempDisp_EN = 1;           //允许调整温度
+ 995   5                          bTimeDisp_EN = 1;           //允许调整烹饪时间
+ 996   5                          bTimeAdjSt = 1;
+ 997   5                          bBookTime_EN = 0;       //不允许调整预约时间
+ 998   5                          bCalBookTime_EN = 0;
+ 999   5                      }
+1000   4                      if(u8CookTemp>0) m_u8SetStep = SET_PHASE_TEMPERATURE; //如果温度可调，先调温度
+1001   4                      else m_u8SetStep = SET_PHASE_TIME;
+1002   4                      FuncSetDisp(m_u8SetStep);
+1003   4                  }
+1004   3                  else
+1005   3                  {
+1006   4                      if(m_u8SetStep==SET_PHASE_TEMPERATURE)
+1007   4                      {
+1008   5                          m_u8SetStep = SET_PHASE_TIME;
+1009   5                          FuncSetDisp(m_u8SetStep);
+1010   5                      }
+1011   4                  }
+1012   3              }
+1013   2          }       
+1014   1      
+1015   1          if(TstBit(u16Key,BIT_KEY_DELAY))
+1016   1              {
+1017   2                      if(IsNewKey())
+1018   2                      {
+1019   3                          if(m_u8SetStep==SET_PHASE_DELAY)
+1020   3                          {
+1021   4                          if(bBookTime_EN==0)
+1022   4                              {
+1023   5                                      if(m_u8CookMode<=10)
+1024   5                                      {
+1025   6                                              tmBookTime[1] = 50;                                         //默认预约时间
+1026   6                                              tmBookTime[2] = 0;
+1027   6                                              tmMinBookTime[1] = 50;
+1028   6                                              tmMinBookTime[2] = 0;                   
+1029   6                                      }
+1030   5                                      else
+1031   5                                      {
+1032   6                                              tmBookTime[1] = tmCookTime[1];
+1033   6                                              tmBookTime[2] = tmCookTime[2];
+1034   6                                              tmMinBookTime[1] = tmCookTime[1];
+1035   6                                              tmMinBookTime[2] = tmCookTime[2];
+1036   6                                      }
+1037   5                                      bBookTime_EN = 1;
+1038   5                                      bCalBookTime_EN = 1;
+1039   5                                      bTimeDisp_EN = 0;
+1040   5                                      bTempDisp_EN = 0;
+1041   5                          m_u8SetStep = SET_PHASE_TIME;
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 18  
+
+1042   5                          FuncSetDisp(m_u8SetStep);
+1043   5                              }       
+1044   4                  }
+1045   3                      }       
+1046   2              }
+1047   1      
+1048   1              if(TstBit(u16Key,BIT_KEY_START))
+1049   1              {
+1050   2                      if(IsNewKey())
+1051   2                      {
+1052   3                  switch(m_u8SetStep)
+1053   3                  {
+1054   4                      case    SET_PHASE_MENU:
+1055   4                          if(m_u8CookMode<=9)//营养菜单
+1056   4                          {
+1057   5                              if(m_u8CookMode==FUNC_ID_BABYPORRIDGE)
+1058   5                              {
+1059   6                                  if(m_u8DIYMode>0)       
+1060   6                                  {
+1061   7                                      if(m_u8DIYAge>0)
+1062   7                                      {
+1063   8                                          m_u8Age = m_u8DIYAge;   //DIY模式下
+1064   8                                      }
+1065   7                                      else
+1066   7                                      {
+1067   8                                          m_u8Age = 1;
+1068   8                                      }
+1069   7                                  }
+1070   6                                  else
+1071   6                                  {
+1072   7                                      if(m_u8LastAge>0)
+1073   7                                      {
+1074   8                                          m_u8Age = m_u8LastAge;  //非DIY模式下
+1075   8                                      }
+1076   7                                      else
+1077   7                                      {
+1078   8                                          m_u8Age = 1;
+1079   8                                      }
+1080   7                                  }
+1081   6                                  m_u8Feel = 0;
+1082   6                                  m_u8People = 0;
+1083   6                                  m_u8SetStep = SET_PHASE_AGE;
+1084   6                              }
+1085   5                              else
+1086   5                              {
+1087   6                                  m_u8SetStep = SET_PHASE_TEXTURE;
+1088   6                              }
+1089   5                              if((m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))
+1090   5                              {
+1091   6                                  m_u8SetStep = SET_PHASE_PEOPLE;
+1092   6                              }
+1093   5                          }
+1094   4                          else                        //经典菜单
+1095   4                          {
+1096   5                              if(m_u8CookMode==FUNC_ID_RISOTTO)
+1097   5                              {
+1098   6                                  m_u8SetStep = SET_PHASE_DELAY;
+1099   6                              }
+1100   5                              else
+1101   5                              {
+1102   6                                  m_u8SetStep = SET_PHASE_DEFAULT;
+1103   6                              }
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 19  
+
+1104   5                          }
+1105   4                          FuncSetDisp(m_u8SetStep);
+1106   4                          break;
+1107   4                          
+1108   4                      case    SET_PHASE_TEXTURE:
+1109   4                          m_u8SetStep = SET_PHASE_PEOPLE;
+1110   4                          FuncSetDisp(m_u8SetStep); 
+1111   4                          break;
+1112   4                          
+1113   4                      case    SET_PHASE_PEOPLE:
+1114   4                          if((m_u8CookMode==FUNC_ID_BUCKWHEAT)||(m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FU
+             -NC_ID_CHICKPEAS))
+1115   4                          {
+1116   5                              m_u8SetStep = SET_PHASE_PUTBASKET;
+1117   5                          }
+1118   4                          else
+1119   4                          {
+1120   5                              m_u8SetStep = SET_PHASE_FOODCUPS;
+1121   5                          }
+1122   4                          if(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS)
+1123   4                          {
+1124   5                              m_u8Foodtype = 1;    //放入第一种食物
+1125   5                          }
+1126   4                          else
+1127   4                          {
+1128   5                              m_u8Foodtype = 0;    //不显示食物类型
+1129   5                          }
+1130   4                          SetCupsWater(m_u8CookMode,m_u8Feel,m_u8People);
+1131   4                          FuncSetDisp(m_u8SetStep); 
+1132   4                          break;
+1133   4      
+1134   4                      case    SET_PHASE_PUTBASKET:
+1135   4                          m_u8SetStep = SET_PHASE_FOODCUPS;
+1136   4                          FuncSetDisp(m_u8SetStep); 
+1137   4                          break;
+1138   4      
+1139   4                      case    SET_PHASE_FOODCUPS:
+1140   4                          if(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS)
+1141   4                          {
+1142   5                              if(m_u8Foodtype==1)
+1143   5                              {
+1144   6                                  m_u8Foodtype = 2;    //放入第二种食物      
+1145   6                                  SetCupsWater(m_u8CookMode,m_u8Feel,m_u8People);
+1146   6                              }
+1147   5                              else
+1148   5                              {   
+1149   6                                  m_u8Foodtype = 0;    //不显示食物类型
+1150   6                                  m_u8SetStep = SET_PHASE_WATERCUPS;
+1151   6                              }
+1152   5                          }
+1153   4                          else
+1154   4                          {
+1155   5                              m_u8SetStep = SET_PHASE_WATERCUPS;
+1156   5                          }
+1157   4                          FuncSetDisp(m_u8SetStep);
+1158   4                          break;
+1159   4      
+1160   4                      case    SET_PHASE_WATERCUPS:          
+1161   4                          if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))
+1162   4                          {
+1163   5                              m_u8SetStep = SET_PHASE_OVER;       //设置结束
+1164   5                              EnterRun();
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 20  
+
+1165   5                          }
+1166   4                          else
+1167   4                          {
+1168   5                              m_u8SetStep = SET_PHASE_DELAY;
+1169   5                              FuncSetDisp(m_u8SetStep);
+1170   5                          }
+1171   4                          break;
+1172   4      
+1173   4                      case    SET_PHASE_DELAY:
+1174   4                          m_u8SetStep = SET_PHASE_OVER;       //设置结束
+1175   4                          EnterRun();
+1176   4                          break;
+1177   4      
+1178   4                      case    SET_PHASE_TIME:
+1179   4                          if(bBookTime_EN)                    //如果是调整的预约时间
+1180   4                          {
+1181   5                              m_u8SetStep = SET_PHASE_OVER;   //设置结束
+1182   5                              EnterRun();                     //进入工作状态
+1183   5                          }
+1184   4                          else                                //如果是调整烹饪时间
+1185   4                          {
+1186   5                              if((m_u8CookMode==FUNC_ID_BROWNING)||(m_u8CookMode==FUNC_ID_BREADRISING)||(m_u8Coo
+             -kMode==FUNC_ID_YOGURT)
+1187   5                              ||(m_u8CookMode==FUNC_ID_CREAMCHEESE)||(m_u8CookMode==FUNC_ID_PASTA))
+1188   5                              {
+1189   6                                  m_u8SetStep = SET_PHASE_OVER;   //设置结束
+1190   6                                  EnterRun();                     //进入工作状态
+1191   6                              }
+1192   5                              else
+1193   5                              {
+1194   6                                  m_u8SetStep = SET_PHASE_DELAY;  //进入预约判断
+1195   6                                  FuncSetDisp(m_u8SetStep);
+1196   6                              }
+1197   5                          }
+1198   4                          break;
+1199   4      
+1200   4                      case    SET_PHASE_TEMPERATURE:
+1201   4                          m_u8SetStep = SET_PHASE_TIME;
+1202   4                          FuncSetDisp(m_u8SetStep);
+1203   4                          break;
+1204   4      
+1205   4                      case    SET_PHASE_DIY:
+1206   4                          SetDIYModeByDIY(m_u8DIYMode);
+1207   4                          m_u8SetStep = SET_PHASE_DIYDEFAULT;
+1208   4                          FuncSetDisp(m_u8SetStep);
+1209   4                          break;
+1210   4                          
+1211   4                      case    SET_PHASE_AGE:
+1212   4                          m_u8SetStep = SET_PHASE_OVER;
+1213   4                          EnterRun();
+1214   4                          break;
+1215   4      
+1216   4                      case    SET_PHASE_DEFAULT:
+1217   4                          if((m_u8CookMode==FUNC_ID_BROWNING)||(m_u8CookMode==FUNC_ID_BREADRISING)||(m_u8CookMod
+             -e==FUNC_ID_YOGURT)
+1218   4                          ||(m_u8CookMode==FUNC_ID_CREAMCHEESE)||(m_u8CookMode==FUNC_ID_PASTA))
+1219   4                          {
+1220   5                              m_u8SetStep = SET_PHASE_OVER;   //设置结束
+1221   5                              EnterRun();                     //进入工作状态
+1222   5                          }
+1223   4                          else
+1224   4                          {
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 21  
+
+1225   5                              m_u8SetStep = SET_PHASE_DELAY;  //进入预约判断
+1226   5                              FuncSetDisp(m_u8SetStep);
+1227   5                          }
+1228   4                          break;
+1229   4                          
+1230   4                      case    SET_PHASE_DIYDEFAULT:
+1231   4                          m_u8SetStep = SET_PHASE_DELAY;  //进入预约判断
+1232   4                          FuncSetDisp(m_u8SetStep);
+1233   4                          break;
+1234   4                      default:
+1235   4                          break;
+1236   4                  }  
+1237   3                      }
+1238   2              }
+1239   1       
+1240   1              //恢复工作状态显示
+1241   1              if(bLEDComeback)
+1242   1              {
+1243   2                      bLEDComeback = 0;
+1244   2                      bSysPwrOn =     1;
+1245   2              }
+1246   1              
+1247   1              //恢复显示
+1248   1              if(bSysPwrOn)
+1249   1              {
+1250   2              FuncSetDisp(m_u8SetStep);
+1251   2              }
+1252   1      
+1253   1          //60S无操作,关闭背光显示
+1254   1              if(bSys_1000MS)
+1255   1              {
+1256   2                      if(m_u8DispDelayCnt>0)
+1257   2                      {
+1258   3                              m_u8DispDelayCnt--;
+1259   3                              if(m_u8DispDelayCnt==0)
+1260   3                              {
+1261   4                      ClrLedBlank(BIT_LED_ALL|BIT_LED_BKL);   //关闭指示灯
+1262   4                              }
+1263   3                      }       
+1264   2              }
+1265   1      }
+1266          
+1267          //判断时间是否合法
+1268          //输入参数,bTimeMode 0，对烹饪时间的判断；1对预约时间的判断
+1269          //说明：对于烹饪时间，如果时间大于最长的烹饪时间，那么设置为最小的烹饪时间
+1270          //      对于预约时间，如果时间大于24:00，那么设置为00：00
+1271          static void JudgeTimeValid(void)
+1272          {
+1273   1              if(bBookTime_EN)
+1274   1              {
+1275   2                      if(tmBookTime[1]>=60)
+1276   2                      {
+1277   3                              tmBookTime[1] = 0;
+1278   3                              tmBookTime[2] += 1;
+1279   3                      }
+1280   2                      
+1281   2                      if(tmBookTime[2]>24)
+1282   2                      {
+1283   3                              tmBookTime[2] = 24;
+1284   3                              tmBookTime[1] = 0;
+1285   3                      }
+1286   2                      
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 22  
+
+1287   2                      if((tmBookTime[2]==24)&&(tmBookTime[1]>0))
+1288   2                      {
+1289   3                              tmBookTime[2] = 24;
+1290   3                              tmBookTime[1] = 0;
+1291   3                      }
+1292   2                      
+1293   2                      if(tmBookTime[2]<tmMinBookTime[2])
+1294   2                      {
+1295   3                              tmBookTime[2] = tmMinBookTime[2];
+1296   3                  tmBookTime[1] =     tmMinBookTime[1];               
+1297   3                      }
+1298   2                      
+1299   2                      if(tmBookTime[2]==tmMinBookTime[2])
+1300   2                      {
+1301   3                              if(tmBookTime[1]<tmMinBookTime[1])
+1302   3                              {
+1303   4                                      tmBookTime[2] = tmMinBookTime[2];
+1304   4                                      tmBookTime[1] = tmMinBookTime[1];       
+1305   4                              }
+1306   3                      }       
+1307   2              }
+1308   1      
+1309   1              if(bTimeDisp_EN)
+1310   1              {
+1311   2              if(m_u8CookMode==FUNC_ID_DIY)
+1312   2              {
+1313   3                  if(u8CookTemp>100)
+1314   3                  {
+1315   4                      tmMaxCookTime[2] = 2;       //T>100,Maxcooktime==2h
+1316   4                      tmMaxCookTime[1] = 0;
+1317   4                  }
+1318   3                  else
+1319   3                  {
+1320   4                      tmMaxCookTime[2] = 9;       //T<=100,Maxcooktime==9h       
+1321   4                      tmMaxCookTime[1] = 0;
+1322   4                  }
+1323   3              }
+1324   2                  
+1325   2              if(tmCookTime[1]>=60)
+1326   2              {
+1327   3                      tmCookTime[1] = 0;
+1328   3                      tmCookTime[2] += 1;
+1329   3              }
+1330   2      
+1331   2              if(tmCookTime[2]>tmMaxCookTime[2])
+1332   2              {
+1333   3                      tmCookTime[2] = tmMaxCookTime[2];
+1334   3                      tmCookTime[1] = tmMaxCookTime[1];
+1335   3              }
+1336   2      
+1337   2              if(tmCookTime[2]==tmMaxCookTime[2])
+1338   2              {
+1339   3                      if(tmCookTime[1]>tmMaxCookTime[1])
+1340   3                      {
+1341   4                              tmCookTime[2] = tmMaxCookTime[2];
+1342   4                              tmCookTime[1] = tmMaxCookTime[1];
+1343   4                      }
+1344   3              }
+1345   2      
+1346   2              if(tmCookTime[2]<tmMinCookTime[2])
+1347   2              {
+1348   3                      tmCookTime[2] = tmMinCookTime[2];
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 23  
+
+1349   3                      tmCookTime[1] = tmMinCookTime[1];
+1350   3              }
+1351   2      
+1352   2              if(tmCookTime[2]==tmMinCookTime[2])
+1353   2              {
+1354   3                      if(tmCookTime[1]<tmMinCookTime[1])
+1355   3                      {
+1356   4                              tmCookTime[2] = tmMinCookTime[2];
+1357   4                              tmCookTime[1] = tmMinCookTime[1];
+1358   4                      }
+1359   3              }
+1360   2          }
+1361   1                      
+1362   1              if(bTempDisp_EN)
+1363   1              {
+1364   2              if(m_u8CookMode==FUNC_ID_DIY)
+1365   2              {
+1366   3                  if((tmCookTime[2]>2)||((tmCookTime[2]==2)&&(tmCookTime[1]>0)))
+1367   3                  {
+1368   4                      MaxCookTemp = 100;          //cooktime>2h,Maxcooktemp==100          
+1369   4                  }
+1370   3                  else
+1371   3                  {
+1372   4                      MaxCookTemp = 160;          //cooktime<=2h,Maxcooktemp==160  
+1373   4                  }     
+1374   3              }
+1375   2              
+1376   2                      if(u8CookTemp>MaxCookTemp)
+1377   2                      {
+1378   3                              u8CookTemp = MaxCookTemp;
+1379   3                      }
+1380   2      
+1381   2                      if(u8CookTemp<MinCookTemp)
+1382   2                      {
+1383   3                              u8CookTemp = MinCookTemp;
+1384   3                      }
+1385   2              }
+1386   1      }               
+1387          
+1388          //根据烹饪模式选择并显示烹饪时间
+1389          static  void    SetDefCookTime(uint8    CookMode)
+1390          {
+1391   1              uint8 index = 0;
+1392   1      
+1393   1          switch(CookMode)
+1394   1          {
+1395   2              case    FUNC_ID_STEAM:
+1396   2                  index =     0;
+1397   2                  break;
+1398   2              case    FUNC_ID_SLOWCOOK:
+1399   2                  index = 1;
+1400   2                  break;
+1401   2              case    FUNC_ID_BROWNING:
+1402   2                  index = 2;
+1403   2                  break;
+1404   2              case    FUNC_ID_PASTA:
+1405   2                  index = 3;
+1406   2                  break;
+1407   2              case    FUNC_ID_BAKING:
+1408   2                  index = 4;
+1409   2                  break;
+1410   2              case    FUNC_ID_SOUP:
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 24  
+
+1411   2                  index = 5;
+1412   2                  break;
+1413   2              case    FUNC_ID_BREADRISING:
+1414   2                  index = 6;
+1415   2                  break;
+1416   2              case    FUNC_ID_DESSERT:
+1417   2                  index = 7;
+1418   2                  break;
+1419   2              case    FUNC_ID_CREAMCHEESE:
+1420   2                  index = 8;
+1421   2                  break;
+1422   2              case    FUNC_ID_YOGURT:
+1423   2                  index = 9;
+1424   2                  break;
+1425   2              case    FUNC_ID_JAM:
+1426   2                  index = 10;
+1427   2                  break;
+1428   2              case     FUNC_ID_DIY:
+1429   2                  index = 11;
+1430   2                  break;
+1431   2              case    FUNC_ID_REHEAT:
+1432   2                  index = 12;
+1433   2                  break;
+1434   2              default:
+1435   2                  break;
+1436   2          }
+1437   1          
+1438   1              tmDefCookTime[2] =      BCD8toHEX(HIBYTE(DefCookTime_Table[index]));
+1439   1              tmDefCookTime[1] =      BCD8toHEX(LOBYTE(DefCookTime_Table[index]));
+1440   1              tmMaxCookTime[2] =      BCD8toHEX(HIBYTE(MaxCookTime_Table[index]));
+1441   1              tmMaxCookTime[1] =      BCD8toHEX(LOBYTE(MaxCookTime_Table[index]));
+1442   1              tmMinCookTime[2] =      BCD8toHEX(HIBYTE(MinCookTime_Table[index]));
+1443   1              tmMinCookTime[1] =      BCD8toHEX(LOBYTE(MinCookTime_Table[index]));
+1444   1      }
+1445          
+1446          //根据烹饪模式和食物种类选择烹饪温度
+1447          static  void    SetDefCookTemp(uint8 CookMode)
+1448          {
+1449   1          uint8 index;
+1450   1      
+1451   1          switch(CookMode)
+1452   1          {
+1453   2              case    FUNC_ID_SLOWCOOK:
+1454   2                  index = 0;
+1455   2                  break;
+1456   2              case    FUNC_ID_DESSERT:
+1457   2                  index = 1;
+1458   2                  break;
+1459   2              case    FUNC_ID_BROWNING:
+1460   2                  index = 2;
+1461   2                  break;
+1462   2              case    FUNC_ID_BAKING:
+1463   2                  index = 3;
+1464   2                  break;
+1465   2              case    FUNC_ID_BREADRISING:
+1466   2                  index = 4;
+1467   2                  break;
+1468   2              case    FUNC_ID_REHEAT:
+1469   2                  index = 5;
+1470   2                  break;
+1471   2              case    FUNC_ID_DIY:
+1472   2                  index = 6;
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 25  
+
+1473   2                  break;        
+1474   2              default:
+1475   2                  index = 0xff;
+1476   2                  break;
+1477   2          }
+1478   1      
+1479   1          if(index!=0xff)
+1480   1          {
+1481   2              DefCookTemp = DefCookTemp_Table[index];
+1482   2              MaxCookTemp = MaxCookTemp_Table[index];
+1483   2              MinCookTemp = MinCookTemp_Table[index]; 
+1484   2          }
+1485   1          else
+1486   1          {
+1487   2              DefCookTemp = 0;
+1488   2              MaxCookTemp = 0;
+1489   2              MinCookTemp = 0;
+1490   2          }
+1491   1      }
+1492          
+1493          //DIY键设置DIYMode
+1494          static  void    SetDIYModeByDIY(uint8 diymode)
+1495          {
+1496   1          uint8 i;
+1497   1      
+1498   1          if((diymode>0)&&(diymode<6))
+1499   1          {
+1500   2              if(diymode==1) i = 0;
+1501   2              if(diymode==2) i = 7;
+1502   2              if(diymode==3) i = 14;
+1503   2              if(diymode==4) i = 21;
+1504   2              if(diymode==5) i = 28;    
+1505   2              m_u8Feel = 0;
+1506   2              m_u8People = 0;
+1507   2              m_u8Foodtype = 0;
+1508   2              m_u8Watertype = 0;
+1509   2              m_u8Age = 0;
+1510   2              bTimeDisp_EN = 0;           //不允许调整时间  
+1511   2              bTempDisp_EN = 0;                       //不允许调整温度
+1512   2              bBookTime_EN = 0;                       //取消预约
+1513   2              bCalBookTime_EN = 0;            //取消预约计算
+1514   2              tmBookTime[0] = 59;                     //清预约时间
+1515   2              tmBookTime[1] = 0;
+1516   2              tmBookTime[2] = 0;
+1517   2              tmCookTime[0] = 59;                     //清烹饪时间
+1518   2              tmCookTime[1] = 0;
+1519   2              tmCookTime[2] = 0;      
+1520   2              u8CookTemp = 0;                         //清烹饪温度
+1521   2              m_u8CookMode = FUNC_ID_DIY;
+1522   2              SetDefCookTime(m_u8CookMode);
+1523   2              SetDefCookTemp(m_u8CookMode);
+1524   2              tmCookTime[1] =  Flash.ROM[i+SSP_DIY1_TM1];
+1525   2              tmCookTime[2] =  Flash.ROM[i+SSP_DIY1_TM2];
+1526   2              u8CookTemp = Flash.ROM[i+SSP_DIY1_TMP];
+1527   2              m_u8DIYCookmode = Flash.ROM[i+SSP_DIY1_COOKMODE];
+1528   2              m_u8DIYFeel = Flash.ROM[i+SSP_DIY1_TEXTURE];
+1529   2              m_u8DIYPeople = Flash.ROM[i+SSP_DIY1_PEOPLE];
+1530   2              m_u8DIYAge = Flash.ROM[i+SSP_DIY1_AGE];
+1531   2          }
+1532   1      }
+1533          
+1534          //设置米量和水量
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 26  
+
+1535          static  void    SetCupsWater(uint8 cookmode,uint8 texture,uint8 people)
+1536          {
+1537   1          uint8 i=0,j=0;
+1538   1      
+1539   1          m_u16Cups = 0;
+1540   1          m_u16Water = 0;
+1541   1          //米量
+1542   1          if((cookmode==1)||(cookmode==2)) i = 0;
+1543   1          if(cookmode==3) i = 1;
+1544   1          if(cookmode==4) i = 2;
+1545   1          if((cookmode==5)||(cookmode==9)||((cookmode==8)&&(m_u8Foodtype==1)))
+1546   1          {
+1547   2              i = 3;
+1548   2          }
+1549   1          if(cookmode==6) i = 4;
+1550   1          if((cookmode==8)&&(m_u8Foodtype==2)) i = 5;
+1551   1          if((people>=2)&&(people<=12))
+1552   1          {
+1553   2              j = (people>>1)-1;
+1554   2          }
+1555   1          m_u16Cups = FoodCups[i][j];
+1556   1      
+1557   1          //水量
+1558   1          if(((cookmode==1)&&(texture==1))||((cookmode==1)&&(texture==3))||((cookmode==1)&&(texture==4))
+1559   1            ||((cookmode==2)&&(texture==1))||((cookmode==2)&&(texture==3))) i = 0;
+1560   1          if(((cookmode==1)&&(texture==2))||((cookmode==5)&&(texture==1))||((cookmode==5)&&(texture==2))) i = 1;
+1561   1          if(((cookmode==2)&&(texture==2))||((cookmode==4)&&(texture==2))) i = 2;
+1562   1          if((cookmode==2)&&(texture==4)) i = 3;
+1563   1          if(((cookmode==3)&&(texture==1))||((cookmode==3)&&(texture==4))) i = 4;
+1564   1          if(((cookmode==3)&&(texture==2))||((cookmode==5)&&(texture==4))) i = 5; 
+1565   1          if(((cookmode==4)&&(texture==1))||((cookmode==4)&&(texture==3))) i = 6;
+1566   1          if((cookmode==6)&&(m_u8Watertype==0)) i = 7;
+1567   1          if(cookmode==9) i = 8;
+1568   1          if(cookmode==8) i = 9;
+1569   1          if((cookmode==6)&&(m_u8Watertype==1)) i = 10;
+1570   1          m_u16Water = WaterCups[i][j];
+1571   1      }
+1572          
+1573          //吸水、糊化、倒计时参数设置
+1574          static  void    LoadVarParam(uint8 cookMode, uint8 texture,uint8 people)
+1575          {
+1576   1              uint8   i=0,j=0;
+1577   1          
+1578   1              g_u16VarParam[SOAK_TIME_RISE_S1] = 0;           //吸水升温时间1
+1579   1              g_u16VarParam[SOAK_TIME_KEEP_S1] = 0;           //吸水维持时间1
+1580   1              g_u16VarParam[SOAK_TEMP_KEEP_S1] = 0;           //吸水维持温度1  
+1581   1              g_u16VarParam[SOAK_TIME_RISE_S2] = 0;           //吸水升温时间2(BrownRice_Nutritious)
+1582   1              g_u16VarParam[SOAK_TIME_KEEP_S2] = 0;       //吸水维持时间2
+1583   1          g_u16VarParam[SOAK_TEMP_KEEP_S2] = 0;       //吸水维持温度2
+1584   1          g_u16VarParam[MASH_TIME] = 0;               //糊化时间  
+1585   1          g_u16VarParam[COUNTDOWN_TIME] = 0;          //倒计时时间  
+1586   1      
+1587   1          if((people>=2)&&(people<=12))
+1588   1          {
+1589   2              j = (people>>1)-1;
+1590   2          }
+1591   1          
+1592   1          //吸水升温时间 / 吸水维持时间 / 吸水维持温度  
+1593   1          if((cookMode==1)&&(texture==1)) i = 0;
+1594   1          if((cookMode==1)&&(texture==4)) i = 1;
+1595   1          if(((cookMode==2)&&(texture==1))||((cookMode==2)&&(texture==3))||((cookMode==2)&&(texture==4))) i = 2;
+1596   1          if(((cookMode==3)&&(texture==1))||((cookMode==3)&&(texture==4))) i = 4;
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 27  
+
+1597   1              if((cookMode==5)&&(texture==1)) i = 5;
+1598   1              if((cookMode==5)&&(texture==2)) i = 6;
+1599   1          if((cookMode==5)&&(texture==4)) i = 7;
+1600   1          if(cookMode==8) i = 8;
+1601   1          g_u16VarParam[SOAK_TIME_RISE_S1] = SoakTimeRiseTab[i][j];
+1602   1          g_u16VarParam[SOAK_TIME_KEEP_S1] = SoakTimeKeepTab[i][j];
+1603   1          g_u16VarParam[SOAK_TEMP_KEEP_S1] = SoakTempKeepTab[i][j];
+1604   1          if((cookMode==2)&&(texture==1))     //Brownrice_Nutritious_S2
+1605   1          {
+1606   2              i = 3;
+1607   2              g_u16VarParam[SOAK_TIME_RISE_S2] = SoakTimeRiseTab[i][j];
+1608   2              g_u16VarParam[SOAK_TIME_KEEP_S2] = SoakTimeKeepTab[i][j];
+1609   2              g_u16VarParam[SOAK_TEMP_KEEP_S2] = SoakTempKeepTab[i][j];
+1610   2          }
+1611   1          
+1612   1          //糊化时间
+1613   1          if(cookMode==1) i = 0;
+1614   1          if(cookMode==2) i = 1;
+1615   1          if(cookMode==3) i = 2;
+1616   1          g_u16VarParam[MASH_TIME] = MashTimeTab[i][j];
+1617   1      
+1618   1          //倒计时时间 
+1619   1          if((cookMode==1)&&(texture==1)) i = 0;
+1620   1          if((cookMode==1)&&(texture==2)) i = 1;    
+1621   1          if((cookMode==1)&&(texture==3)) i = 2;
+1622   1          if((cookMode==1)&&(texture==4)) i = 3;
+1623   1          if((cookMode==2)&&(texture==1)) i = 4;
+1624   1          if((cookMode==2)&&(texture==2)) i = 5;
+1625   1          if((cookMode==2)&&(texture==3)) i = 6;
+1626   1          if((cookMode==2)&&(texture==4)) i = 7;
+1627   1          if((cookMode==3)&&(texture==1)) i = 8;
+1628   1          if((cookMode==3)&&(texture==2)) i = 9;
+1629   1          if((cookMode==3)&&(texture==4)) i = 10;
+1630   1          if((cookMode==4)&&(texture==1)) i = 11;
+1631   1          if((cookMode==4)&&(texture==2)) i = 12;
+1632   1          if((cookMode==4)&&(texture==3)) i = 13;
+1633   1          if((cookMode==5)&&(texture==1)) i = 14;
+1634   1          if((cookMode==5)&&(texture==2)) i = 15;
+1635   1          if((cookMode==5)&&(texture==4)) i = 16;
+1636   1          if((cookMode==6)&&(bStageChgReq==0)) i = 17;    //Beans_stage1
+1637   1          if((cookMode==6)&&(bStageChgReq==1))                        //Beans_stage2
+1638   1              {
+1639   2                      if(texture==1)                                                          //Beans_stage2_Nutritious
+1640   2                      {
+1641   3                              i = 14;
+1642   3                      }
+1643   2                      else                                                                            //Beans_stage2_Normal
+1644   2                      {
+1645   3                              i = 18;
+1646   3                      }
+1647   2              }
+1648   1          if(cookMode==8) i = 20;
+1649   1          if((cookMode==9)&&(bStageChgReq==0)) i = 21;
+1650   1          if((cookMode==9)&&(bStageChgReq==1)) i = 22;
+1651   1          g_u16VarParam[COUNTDOWN_TIME] = CountDownTimeTab[i][j];
+1652   1          if(cookMode==7)
+1653   1          {
+1654   2              i = 19;
+1655   2              if(m_u8Age>0)
+1656   2              {
+1657   3                  j = m_u8Age - 1;
+1658   3              }
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 28  
+
+1659   2              g_u16VarParam[COUNTDOWN_TIME] = CountDownTimeTab[i][j];
+1660   2          }
+1661   1      }
+1662          
+1663          /*-----------------------------------------------------------------------------*
+1664          *  Function Description:                                                       *
+1665          *      功能选择状态下的显示                                                            * 
+1666          *  Parameters:                                                                 *
+1667          *      Step                                                                    *
+1668          *  Return                                                                      *
+1669          *      None                                                                    *
+1670          *----------------------------------------------------------------------------*/
+1671          static  void    FuncSetDisp(uint8 Step)
+1672          {
+1673   1          ClrLedBlank(BIT_LED_ALL);
+1674   1          SetLedBlank(BIT_LED_START);     
+1675   1          SetLedBlank(BIT_LED_STOP);
+1676   1          u8BlankCnt = 88;
+1677   1          
+1678   1          switch(Step)
+1679   1          {
+1680   2              case    SET_PHASE_MENU:                 //菜单设置阶段
+1681   2                  if(m_u8CookMode<=9)
+1682   2                  {   
+1683   3                      LCDDispZone1(m_u8CookMode,0,ZONE1_STAT_NUTRIMENU_SELECT);   //显示营养菜单图标
+1684   3                  }
+1685   2                  else
+1686   2                  {
+1687   3                      LCDDispZone1(m_u8CookMode,0,ZONE1_STAT_CLASSICMENU_SELECT); //显示经典菜单图标
+1688   3                  }
+1689   2                  LCDDispZone2(0, ZONE2_STAT_ALLOFF);
+1690   2                  LCDDispZone3(0, 0, 0, ZONE3_STAT_ALLOFF);
+1691   2                  LCDDispZone4(m_u8DIYMode, 0, 0, ZONE4_STAT_ALLOFF);
+1692   2                  PlayGif(NULL, 0, 1);
+1693   2                  break;
+1694   2              case    SET_PHASE_TEXTURE:              //口感设置阶段
+1695   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_SELECT);
+1696   2                  LCDDispZone2(0, ZONE2_STAT_ALLOFF);
+1697   2                  LCDDispZone3(0, 0, 0, ZONE3_STAT_ALLOFF);
+1698   2                  LCDDispZone4(m_u8DIYMode, 0, 0, ZONE4_STAT_ALLOFF);
+1699   2                  PlayGif(NULL, 0, 1);
+1700   2                  break;
+1701   2              case    SET_PHASE_PEOPLE:               //人数设置阶段
+1702   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+1703   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_SELECT);
+1704   2                  LCDDispZone3(0, 0, 0, ZONE3_STAT_ALLOFF);
+1705   2                  LCDDispZone4(m_u8DIYMode, 0, 0, ZONE4_STAT_ALLOFF);
+1706   2                  PlayGif(NULL, 0, 1);
+1707   2                  break;
+1708   2              case    SET_PHASE_PUTBASKET:            //放入吸水篮子阶段
+1709   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+1710   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_CONFIRM);
+1711   2                  LCDDispZone3(0, 0, 0, ZONE3_STAT_ALLOFF);
+1712   2                  LCDDispZone4(m_u8DIYMode, 0, 0, ZONE4_STAT_ALLOFF);
+1713   2                  PlayGif(GifPutbasket, 600, 0);
+1714   2                  break;
+1715   2              case    SET_PHASE_FOODCUPS:             //放入食物阶段
+1716   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+1717   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_CONFIRM);
+1718   2                  LCDDispZone3(m_u16Cups, m_u16Water, m_u8Foodtype, ZONE3_STAT_PUTFOOD);
+1719   2                  LCDDispZone4(m_u8DIYMode,0,0,ZONE4_STAT_ALLOFF);
+1720   2                  if((m_u8CookMode==FUNC_ID_BUCKWHEAT)||(m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CH
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 29  
+
+             -ICKPEAS))
+1721   2                  {
+1722   3                      PlayGif(GifFoodBSK,600, 0);
+1723   3                  }
+1724   2                  else
+1725   2                  {
+1726   3                      PlayGif(GifFoodNBSK,600, 0);
+1727   3                  }
+1728   2                  break;
+1729   2              case    SET_PHASE_WATERCUPS:            //放入水阶段
+1730   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+1731   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_CONFIRM);
+1732   2                  LCDDispZone3(m_u16Cups, m_u16Water, m_u8Foodtype, ZONE3_STAT_PUTWATER);
+1733   2                  LCDDispZone4(m_u8DIYMode, 0, 0, ZONE4_STAT_ALLOFF);
+1734   2                  if((m_u8CookMode==FUNC_ID_BUCKWHEAT)||(m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CH
+             -ICKPEAS))
+1735   2                  {
+1736   3                      PlayGif(GifWaterBSK,600,0);
+1737   3                  }
+1738   2                  else
+1739   2                  {
+1740   3                      PlayGif(GifWaterNBSK,600,0);
+1741   3                  }
+1742   2                  break;
+1743   2             case     SET_PHASE_DELAY:                //预约选择阶段(预约灯闪烁)
+1744   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+1745   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_CONFIRM);
+1746   2                  LCDDispZone3(0, 0, m_u8Foodtype, ZONE3_STAT_ALLOFF);
+1747   2                  if(m_u8CookMode<=10)
+1748   2                  {
+1749   3                      LCDDispZone4(m_u8DIYMode, 0, 0, ZONE4_STAT_ALLOFF);   //健康菜单&Rissto不显示ZONE4
+1750   3                  }
+1751   2                  else
+1752   2                  {
+1753   3                      LCDDispZone4(m_u8DIYMode,u8CookTemp,tmCookTime,ZONE4_STAT_SET_DEFAULT);
+1754   3                  }
+1755   2                  if(m_u8CookMode<=9)    //健康菜单
+1756   2                  {
+1757   3                      if((m_u8CookMode==FUNC_ID_BUCKWHEAT)||(m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_I
+             -D_CHICKPEAS))
+1758   3                      {
+1759   4                          PlayGif(GifCookerBSK,600,0);
+1760   4                      }
+1761   3                      else
+1762   3                      {
+1763   4                          PlayGif(GifCookerNBSK,600,0);
+1764   4                      }
+1765   3                  }
+1766   2                  else                   //经典菜单
+1767   2                  {
+1768   3                      PlayGif(GifCookerNBSKNLID, 600, 0);
+1769   3                  }
+1770   2                  SetLedBlank(BIT_LED_DELAY);
+1771   2                  if(m_u8CookMode==FUNC_ID_REHEAT) SetLedBlank(BIT_LED_REHEAT);
+1772   2                  break;
+1773   2              case    SET_PHASE_DEFAULT:              //默认温度和时间显示阶段(经典菜单&DIY)
+1774   2                  LCDDispZone1(m_u8CookMode, 0, ZONE1_STAT_TEXTURE_CONFIRM);
+1775   2                  LCDDispZone2(0, ZONE2_STAT_ALLOFF);
+1776   2                  LCDDispZone3(0, 0, 0, ZONE3_STAT_ALLOFF);
+1777   2                  LCDDispZone4(m_u8DIYMode,u8CookTemp,tmCookTime,ZONE4_STAT_SET_DEFAULT);
+1778   2                  PlayGif(GifCookerNBSKNLID, 600, 0);
+1779   2                  if(m_u8CookMode==FUNC_ID_REHEAT) SetLedBlank(BIT_LED_REHEAT);
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 30  
+
+1780   2                  break;
+1781   2              case    SET_PHASE_TIME:                 //时间设置阶段
+1782   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+1783   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_CONFIRM);
+1784   2                  LCDDispZone3(0, 0, m_u8Foodtype, ZONE3_STAT_ALLOFF);
+1785   2                  if(bBookTime_EN)
+1786   2                  {
+1787   3                      LCDDispZone4(m_u8DIYMode,u8CookTemp,tmBookTime,ZONE4_STAT_TIME_SELECT);
+1788   3                      LedOn(BIT_LED_DELAY);
+1789   3                  }
+1790   2                  else
+1791   2                  {
+1792   3                      if(m_u8CookMode<=10)
+1793   3                      {
+1794   4                          LCDDispZone4(m_u8DIYMode,0,0,ZONE4_STAT_ALLOFF);    //健康菜单&Rissto不显示ZONE4
+1795   4                      }
+1796   3                      else
+1797   3                      {
+1798   4                          LCDDispZone4(m_u8DIYMode,u8CookTemp,tmCookTime,ZONE4_STAT_TIME_SELECT);
+1799   4                      }
+1800   3                  }
+1801   2                  if(m_u8CookMode<=9)    //健康菜单
+1802   2                  {
+1803   3                      if((m_u8CookMode==FUNC_ID_BUCKWHEAT)||(m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_I
+             -D_CHICKPEAS))
+1804   3                      {
+1805   4                          PlayGif(GifCookerBSK,600,0);
+1806   4                      }
+1807   3                      else
+1808   3                      {
+1809   4                          PlayGif(GifCookerNBSK,600,0);
+1810   4                      }
+1811   3                  }
+1812   2                  else                   //经典菜单
+1813   2                  {
+1814   3                      PlayGif(GifCookerNBSKNLID, 600, 0);
+1815   3                  }
+1816   2                  if(m_u8CookMode==FUNC_ID_REHEAT) SetLedBlank(BIT_LED_REHEAT);
+1817   2                  break;
+1818   2              case    SET_PHASE_TEMPERATURE:          //温度设置阶段     
+1819   2                  LCDDispZone1(m_u8CookMode, 0, ZONE1_STAT_TEXTURE_CONFIRM);
+1820   2                  LCDDispZone2(0, ZONE2_STAT_ALLOFF);
+1821   2                  LCDDispZone3(0, 0, 0, ZONE3_STAT_ALLOFF);
+1822   2                  LCDDispZone4(m_u8DIYMode,u8CookTemp,tmCookTime,ZONE4_STAT_TEMP_SELECT);
+1823   2                  PlayGif(GifCookerNBSKNLID, 600, 0);
+1824   2                  if(m_u8CookMode==FUNC_ID_REHEAT) SetLedBlank(BIT_LED_REHEAT);
+1825   2                  break;
+1826   2              case    SET_PHASE_DIY:                  //DIY设置阶段(选择DIY1-5中的一个)
+1827   2                  LCDDispZone1(0, 0, ZONE1_STAT_ALLOFF);
+1828   2                  LCDDispZone2(0, ZONE2_STAT_ALLOFF);
+1829   2                  LCDDispZone3(0, 0, 0, ZONE3_STAT_ALLOFF);
+1830   2                  LCDDispZone4(m_u8DIYMode,u8CookTemp,tmCookTime,ZONE4_STAT_DIY_SELECT);
+1831   2                  PlayGif(NULL, 0, 1);
+1832   2                  u8BlankCnt = 30;
+1833   2                  break;
+1834   2              case    SET_PHASE_AGE:                  //Babyporridge 年龄设置阶段
+1835   2                  LCDDispZone1(m_u8CookMode, 0, ZONE1_STAT_TEXTURE_CONFIRM);
+1836   2                  LCDDispZone2(0, ZONE2_STAT_ALLOFF);
+1837   2                  LCDDispZone3(0, 0, 0, ZONE3_STAT_ALLOFF);
+1838   2                  LCDDispZone4(m_u8Age|0x80, 0, 0, ZONE4_STAT_DIY_SELECT);
+1839   2                  PlayGif(GifCookerNBSK,600, 0);
+1840   2                  u8BlankCnt = 30;
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 31  
+
+1841   2                  break;
+1842   2              case    SET_PHASE_DIYDEFAULT:
+1843   2                  LCDDispZone1(m_u8CookMode, 0, ZONE1_STAT_TEXTURE_CONFIRM);
+1844   2                  LCDDispZone2(0, ZONE2_STAT_ALLOFF);
+1845   2                  LCDDispZone3(0, 0, 0, ZONE3_STAT_ALLOFF);
+1846   2                  LCDDispZone4(m_u8DIYMode,u8CookTemp,tmCookTime,ZONE4_STAT_SET_DEFAULT);
+1847   2                  PlayGif(GifCookerNBSKNLID, 600, 0);
+1848   2                  break;
+1849   2              default:
+1850   2                  break;
+1851   2          }
+1852   1      }
+1853          /*-----------------------------------------------------------------------------*
+1854           *  Function Description:                                                      *
+1855           *      工作状态处理                                                                               *
+1856           *  Parameters:                                                                *
+1857           *      None                                                                   *
+1858           *  Return                                                                     *
+1859           *      None                                                                   *
+1860           *----------------------------------------------------------------------------*/
+1861          static  void    RunProc(void)
+1862          {
+1863   1              uint16  u16Key;
+1864   1              u16Key  =       GetKey();
+1865   1      
+1866   1          if(TstBit(u16Key,BIT_KEY_CANCEL))
+1867   1          {
+1868   2              //返回上一个设置
+1869   2              if(IsNewKey())
+1870   2              {
+1871   3                  switch(m_u8RunStep)
+1872   3                  {                 
+1873   4                      case    RUN_PHASE_DELAY:
+1874   4                          m_u8RunStep = RUN_PHASE_WATERCUPS;
+1875   4                          FuncRunDisp(m_u8RunStep);
+1876   4                          break;
+1877   4      
+1878   4                      case    RUN_PHASE_TIME:
+1879   4                          if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))
+1880   4                          {
+1881   5                              bBookTime_EN = 0;           //清预约
+1882   5                              bCalBookTime_EN = 0;
+1883   5                              tmBookTime[1] = 0;
+1884   5                              tmBookTime[2] = 0;
+1885   5                              m_u8RunStep = RUN_PHASE_DELAY;
+1886   5                              FuncRunDisp(m_u8RunStep);
+1887   5                          }
+1888   4                          break;
+1889   4      
+1890   4                      default:
+1891   4                          PlaySound(MusicOFF);
+1892   4                          break;
+1893   4                  }
+1894   3              }
+1895   2              
+1896   2              if((u16Key==VAL_KEY_CANCEL)&&(g_u16KeyRpyCnt==15))      //长按2S进入设置状态
+1897   2              {
+1898   3                  EnterDefault(); 
+1899   3                  PlaySound(MusicCycleEnd);
+1900   3                  return;
+1901   3              }
+1902   2          }
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 32  
+
+1903   1      
+1904   1          if(TstBit(u16Key,BIT_KEY_STOP))
+1905   1          {
+1906   2              if(IsNewKey())
+1907   2              {
+1908   3                  PlaySound(MusicOFF);
+1909   3              }
+1910   2              if((u16Key==VAL_KEY_STOP)&&(g_u16KeyRpyCnt==15))        //长按2S进入设置状态
+1911   2              {
+1912   3                  g_u16KeyRpyCnt = 0;
+1913   3                  EnterDefault(); 
+1914   3                  PlaySound(MusicCycleEnd);
+1915   3                  return;
+1916   3              }
+1917   2          }
+1918   1      
+1919   1          if(TstBit(u16Key,BIT_KEY_PLUS))
+1920   1          {
+1921   2              if((IsNewKey())||(g_u16KeyRpyCnt>15))
+1922   2              {
+1923   3                  if(m_u8RunStep==RUN_PHASE_TIME)
+1924   3                  {
+1925   4                      if(bTimeDisp_EN==1)     
+1926   4                      {
+1927   5                          //判断烹饪时间是否溢出 
+1928   5                                      if((tmCookTime[2]==tmMaxCookTime[2])&&(tmCookTime[1]==tmMaxCookTime[1]))
+1929   5                                      {
+1930   6                                              tmCookTime[2] = tmMinCookTime[2];
+1931   6                                              tmCookTime[1] = tmMinCookTime[1];
+1932   6                                  }
+1933   5                                  else
+1934   5                                      {
+1935   6                                          if((m_u8CookMode==FUNC_ID_BROWNING)||(m_u8CookMode==FUNC_ID_PASTA)||(m_u8CookMode==FUNC_ID_DIY
+             -))                        
+1936   6                                              {
+1937   7                                                  tmCookTime[1]++;
+1938   7                                              }
+1939   6                                              else 
+1940   6                                              {
+1941   7                                                  if(m_u8CookMode==FUNC_ID_YOGURT)
+1942   7                                                      {
+1943   8                                                          tmCookTime[1] += 30;
+1944   8                                                      }
+1945   7                                                      else
+1946   7                                                      {
+1947   8                                                      tmCookTime[1] += 5; 
+1948   8                                                      }
+1949   7                                              }       
+1950   6                                      }
+1951   5                                      JudgeTimeValid();               //判断时间是否在合理范围内      
+1952   5                                      tmCookTime[0] = 59;
+1953   5                                      m_u8AutoRunCnt = 5;
+1954   5                                  }
+1955   4      
+1956   4                      if(bBookTime_EN)                        //预约时间是否允许调整
+1957   4                                  {                   
+1958   5                                      //判断预约时间是否溢出
+1959   5                                      if((tmBookTime[2]==24)&&(tmBookTime[1]==0))
+1960   5                                      {
+1961   6                                              tmBookTime[2] = tmMinBookTime[2];
+1962   6                                              tmBookTime[1] = tmMinBookTime[1];
+1963   6                                      }
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 33  
+
+1964   5                                      else
+1965   5                                      {   
+1966   6                                              tmBookTime[1] = (tmBookTime[1]/5)*5+5;
+1967   6                                      }
+1968   5                                          JudgeTimeValid();           //判断时间是否在合理范围内
+1969   5                                  }
+1970   4                      FuncRunDisp(m_u8RunStep);  
+1971   4                  }
+1972   3      
+1973   3                  if(m_u8RunStep==RUN_PHASE_TEMPERATURE)
+1974   3                  {
+1975   4                      if(bTempDisp_EN)                        //温度是否允许调整
+1976   4                                  {
+1977   5                                              //判断烹饪温度是否溢出
+1978   5                                              if(u8CookTemp==MaxCookTemp)
+1979   5                                              {
+1980   6                                                      u8CookTemp = MinCookTemp;
+1981   6                                              }
+1982   5                                              else
+1983   5                                              {
+1984   6                              if((m_u8CookMode==FUNC_ID_SLOWCOOK)||(m_u8CookMode==FUNC_ID_BREADRISING))
+1985   6                              {
+1986   7                                  u8CookTemp += 10;
+1987   7                              }
+1988   6                              else
+1989   6                              {
+1990   7                                  u8CookTemp += 5;
+1991   7                              }
+1992   6                                              }
+1993   5                                              JudgeTimeValid();       //判断温度是否在合理范围内
+1994   5                                              m_u8AutoRunCnt = 5;
+1995   5                                      }                       
+1996   4                      FuncRunDisp(m_u8RunStep);  
+1997   4                              }
+1998   3      
+1999   3              }
+2000   2          }
+2001   1      
+2002   1          if(TstBit(u16Key,BIT_KEY_MINUS))
+2003   1          {
+2004   2              if((IsNewKey())||(g_u16KeyRpyCnt>15))
+2005   2              {
+2006   3                  if(m_u8RunStep==RUN_PHASE_TIME)
+2007   3                  {
+2008   4                      if(bTimeDisp_EN==1)     
+2009   4                      {
+2010   5                                          //判断烹饪时间是否溢出 
+2011   5                                              if((tmCookTime[2]==tmMinCookTime[2])&&(tmCookTime[1]==tmMinCookTime[1]))
+2012   5                                              {
+2013   6                                                      tmCookTime[2] = tmMaxCookTime[2];
+2014   6                                                      tmCookTime[1] = tmMaxCookTime[1];
+2015   6                                              }
+2016   5                                              else
+2017   5                                              {
+2018   6                                                      if((m_u8CookMode==FUNC_ID_BROWNING)||(m_u8CookMode==FUNC_ID_PASTA)||(m_u8CookMode==FUNC_ID_DIY))                        
+2019   6                                                      {
+2020   7                                                              if(tmCookTime[1]==0)
+2021   7                                                              {
+2022   8                                                                      tmCookTime[1] = 59;
+2023   8                                                                      tmCookTime[2]--;
+2024   8                                                              }
+2025   7                                                              else
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 34  
+
+2026   7                                                              {
+2027   8                                                                      tmCookTime[1]--;
+2028   8                                                              }
+2029   7                                                      }
+2030   6                                                      else 
+2031   6                                                      {
+2032   7                                                              if(m_u8CookMode==FUNC_ID_YOGURT)
+2033   7                                                              {
+2034   8                                                                      if(tmCookTime[1]==0)
+2035   8                                                                      {
+2036   9                                                                              tmCookTime[1] = 30;
+2037   9                                                                              tmCookTime[2]--;
+2038   9                                                                      }
+2039   8                                                                      else
+2040   8                                                                      {
+2041   9                                                                              tmCookTime[1] -= 30;
+2042   9                                                                      }
+2043   8                                                              }
+2044   7                                                              else
+2045   7                                                              {
+2046   8                                                          if(tmCookTime[1]==0)
+2047   8                                                          {
+2048   9                                                                  tmCookTime[1] = 55;
+2049   9                                                                  tmCookTime[2]--;
+2050   9                                                          }
+2051   8                                                          else
+2052   8                                                          {
+2053   9                                                                  tmCookTime[1] -= 5;
+2054   9                                                          }  
+2055   8                                                              }
+2056   7                                                      }       
+2057   6                                              }
+2058   5                                              JudgeTimeValid();               //判断时间是否在合理范围内
+2059   5                                              tmCookTime[0] = 59;
+2060   5                                          m_u8AutoRunCnt = 5;
+2061   5                                      }
+2062   4      
+2063   4                      if(bBookTime_EN)                        //预约时间是否允许调整
+2064   4                                  {                   
+2065   5                                      //判断预约时间是否溢出
+2066   5                                              if((tmBookTime[2]==tmMinBookTime[2])&&(tmBookTime[1]==tmMinBookTime[1]))
+2067   5                                              {
+2068   6                                                      tmBookTime[2] = 24;
+2069   6                                                      tmBookTime[1] = 0;
+2070   6                                              }
+2071   5                                              else
+2072   5                                              {                                       
+2073   6                                                      if(tmBookTime[1]==0)
+2074   6                                                      {
+2075   7                                                              tmBookTime[1] = 55;
+2076   7                                                              tmBookTime[2]--;
+2077   7                                                      }
+2078   6                                                      else
+2079   6                                                      {
+2080   7                                                              tmBookTime[1] -= 5;
+2081   7                                                      }       
+2082   6                                              }
+2083   5                          JudgeTimeValid();           //判断时间是否在合理范围内
+2084   5                                      }
+2085   4                      FuncRunDisp(m_u8RunStep);  
+2086   4                  }
+2087   3      
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 35  
+
+2088   3                  if(m_u8RunStep==RUN_PHASE_TEMPERATURE)
+2089   3                  {
+2090   4                      if(bTempDisp_EN)                        //温度是否允许调整
+2091   4                                  {
+2092   5                                              //判断烹饪温度是否溢出
+2093   5                                              if(u8CookTemp==MinCookTemp)
+2094   5                                              {
+2095   6                                                      u8CookTemp = MaxCookTemp;
+2096   6                                              }
+2097   5                                              else
+2098   5                                              {
+2099   6                              if((m_u8CookMode==FUNC_ID_SLOWCOOK)||(m_u8CookMode==FUNC_ID_BREADRISING))
+2100   6                              {
+2101   7                                  u8CookTemp -= 10;    
+2102   7                              }
+2103   6                              else
+2104   6                              {
+2105   7                                  u8CookTemp -= 5;
+2106   7                              }
+2107   6                                              }
+2108   5                                              JudgeTimeValid();       //判断温度是否在合理范围内
+2109   5                                              m_u8AutoRunCnt = 5;
+2110   5                                      }                       
+2111   4                      FuncRunDisp(m_u8RunStep);  
+2112   4                              }
+2113   3      
+2114   3              }
+2115   2          }
+2116   1      
+2117   1          if(TstBit(u16Key,BIT_KEY_TIMER))
+2118   1          {
+2119   2                      if(IsNewKey())
+2120   2                      {
+2121   3                          if(m_u8RunStep==RUN_PHASE_START)
+2122   3                  {
+2123   4                      if(m_u8CookMode>10)                 //经典菜单&&DIY
+2124   4                      {
+2125   5                          if(bBookTime_EN==0)             //无预约可调整烹饪温度和时间
+2126   5                          {
+2127   6                              if((bTempDisp_EN==0)&&(bTimeDisp_EN==0))
+2128   6                              {
+2129   7                                  m_u8AutoRunCnt = 5;
+2130   7                                  bTempDisp_EN = 1;           //允许调整温度
+2131   7                                  bTimeDisp_EN = 1;           //允许调整烹饪时间
+2132   7                                  bBookTime_EN = 0;       //不允许调整预约时间
+2133   7                                  bCalBookTime_EN = 0;
+2134   7                              }
+2135   6                              if(u8CookTemp>0) m_u8RunStep = RUN_PHASE_TEMPERATURE; //如果温度可调，先调温度
+2136   6                              else m_u8RunStep = RUN_PHASE_TIME;
+2137   6                              FuncRunDisp(m_u8RunStep);
+2138   6                          }
+2139   5                          else                            //有预约则显示设定的烹饪温度和时间
+2140   5                          {
+2141   6                              if(m_u8CookMode>10)
+2142   6                              {
+2143   7                                  m_u8CurTimeDispCnt = 5;
+2144   7                              }
+2145   6                          }
+2146   5                      }
+2147   4                  }
+2148   3                  else
+2149   3                  {
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 36  
+
+2150   4                      if(m_u8RunStep==RUN_PHASE_TEMPERATURE)
+2151   4                      {
+2152   5                          m_u8AutoRunCnt = 5;
+2153   5                          m_u8RunStep = RUN_PHASE_TIME;
+2154   5                          FuncRunDisp(m_u8RunStep);
+2155   5                      }
+2156   4                  }
+2157   3              }
+2158   2          }
+2159   1      
+2160   1          if(TstBit(u16Key,BIT_KEY_DELAY))
+2161   1          {
+2162   2              if(IsNewKey())
+2163   2              {
+2164   3                  if(m_u8RunStep==RUN_PHASE_DELAY)
+2165   3                          {
+2166   4                          if(bBookTime_EN==0)
+2167   4                              {
+2168   5                                      if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))
+2169   5                                      {
+2170   6                                              tmBookTime[1] = 50;                                         //默认预约时间
+2171   6                                              tmBookTime[2] = 0;
+2172   6                                              tmMinBookTime[1] = 50;
+2173   6                                              tmMinBookTime[2] = 0;                   
+2174   6                                          bBookTime_EN = 1;
+2175   6                                          bCalBookTime_EN     = 1;
+2176   6                                          bTimeDisp_EN = 0;
+2177   6                                          bTempDisp_EN = 0;
+2178   6                              m_u8RunStep = RUN_PHASE_TIME;
+2179   6                              FuncRunDisp(m_u8RunStep);
+2180   6                          }
+2181   5                              }       
+2182   4                  }
+2183   3              }
+2184   2          }
+2185   1      
+2186   1              if(TstBit(u16Key,BIT_KEY_START))
+2187   1              {
+2188   2                      if(IsNewKey())
+2189   2                      {   
+2190   3                          switch(m_u8RunStep)
+2191   3                  {
+2192   4                      case    RUN_PHASE_START:
+2193   4                          if((m_u8CookMode==FUNC_ID_PASTA)&&(bTempAch1st==1)&&(bTimeCountDown==0))   //pasta
+2194   4                          {
+2195   5                              bTimeCountDown = 1;   
+2196   5                              if(bKeyMusic_EN==0)PlaySound(MusicKeyDown); 
+2197   5                          }  
+2198   4                          break;
+2199   4                          
+2200   4                      case    RUN_PHASE_DRAINED:
+2201   4                          m_u8RunStep = RUN_PHASE_DRAINEDFOOD;
+2202   4                          FuncRunDisp(m_u8RunStep); 
+2203   4                          break;
+2204   4                          
+2205   4                      case    RUN_PHASE_DRAINEDFOOD:
+2206   4                           m_u8Foodtype = 0; 
+2207   4                           m_u8RunStep  = RUN_PHASE_WATERCUPS;   
+2208   4                          if(m_u8CookMode==FUNC_ID_BEANS)
+2209   4                          {
+2210   5                              m_u8Watertype = 1;
+2211   5                          }
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 37  
+
+2212   4                          SetCupsWater(m_u8CookMode,m_u8Feel,m_u8People);
+2213   4                          FuncRunDisp(m_u8RunStep); 
+2214   4                          break;
+2215   4      
+2216   4                      case    RUN_PHASE_FOODCUPS:
+2217   4                          m_u8RunStep = RUN_PHASE_WATERCUPS;    
+2218   4                          FuncRunDisp(m_u8RunStep); 
+2219   4                          break;
+2220   4      
+2221   4                      case    RUN_PHASE_WATERCUPS:
+2222   4                          m_u8RunStep = RUN_PHASE_DELAY;
+2223   4                          FuncRunDisp(m_u8RunStep); 
+2224   4                          break;
+2225   4      
+2226   4                      case    RUN_PHASE_DELAY:
+2227   4                          m_u8RunStep = RUN_PHASE_START;       //不预约，直接开始工作
+2228   4                          bStageChgReq = 1;                    //进入工作第二阶段
+2229   4                          EnterRun();
+2230   4                          break;
+2231   4      
+2232   4                      case    RUN_PHASE_TIME:
+2233   4                          if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))
+2234   4                          {
+2235   5                              bStageChgReq = 1;               //进入工作第二阶段
+2236   5                          }
+2237   4                          m_u8RunStep = RUN_PHASE_START;      //设置结束
+2238   4                          EnterRun();                         //进入工作状态
+2239   4                          break;
+2240   4      
+2241   4                      case    RUN_PHASE_TEMPERATURE:
+2242   4                          m_u8RunStep = RUN_PHASE_TIME;
+2243   4                          m_u8AutoRunCnt = 5;
+2244   4                          FuncRunDisp(m_u8RunStep);
+2245   4                          break;
+2246   4      
+2247   4                      default:
+2248   4                          break;           
+2249   4                  }
+2250   3              }       
+2251   2              }
+2252   1      
+2253   1              #ifdef  DEBUG0
+2254   1              if(TstBit(u16Key,BIT_KEY_DIY))
+2255   1              {
+2256   2                      if(IsNewKey())
+2257   2                      {
+2258   3                          bDebug_EN ^= 1;
+2259   3                  FuncRunDisp(m_u8RunStep);
+2260   3                      }
+2261   2              }
+2262   1              #endif
+2263   1                      
+2264   1              //恢复工作状态显示
+2265   1              if(bLEDComeback)
+2266   1              {
+2267   2                      bLEDComeback    =       0;
+2268   2                      bSysPwrOn               =       1;
+2269   2              }
+2270   1              
+2271   1              if(bSys_1000MS)
+2272   1              {               
+2273   2              if(m_u8CurTimeDispCnt>0)
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 38  
+
+2274   2                      {
+2275   3                              m_u8CurTimeDispCnt--;
+2276   3                  if(m_u8CurTimeDispCnt==0)
+2277   3                  {
+2278   4                      bSysPwrOn = 1;
+2279   4                  }
+2280   3                      }
+2281   2              
+2282   2                      if(m_u8AutoRunCnt>0)
+2283   2                      {
+2284   3                              m_u8AutoRunCnt--;
+2285   3                              if(m_u8AutoRunCnt==0)
+2286   3                              {
+2287   4                                      PlaySound(MusicPoweron);
+2288   4                                      EnterRun();                     
+2289   4                              }
+2290   3                      }
+2291   2              }
+2292   1                      
+2293   1              if(bSysPwrOn)
+2294   1              {
+2295   2              FuncRunDisp(m_u8RunStep);
+2296   2              }
+2297   1      
+2298   1              if(bBookTime_EN==0)
+2299   1              {
+2300   2                      bCookBySctEN =  1;                              //无预约,允许功能脚本运行
+2301   2              bHeatPwrReq  =  1;              //无预约,打开加热总开关
+2302   2              bSoakStage   =  0;
+2303   2                      bHeatStage   =  1;
+2304   2              if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))
+2305   2              {
+2306   3                  if(bStageChgReq==0) 
+2307   3                  {
+2308   4                      bSoakStage = 1;
+2309   4                      bHeatStage = 0;
+2310   4                  }
+2311   3              }
+2312   2                      if((tmCookTime[0]==59)&&(tmCookTime[1]==0)&&(tmCookTime[2]==0))
+2313   2                      {       
+2314   3                          if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))
+2315   3                  {
+2316   4                     if(m_u8RunStep!=RUN_PHASE_START) //处于滤水、放食物、放水阶段则停止运行
+2317   4                     {
+2318   5                          ResetCurScript();             
+2319   5                          g_u8HiTemp  =       0;                              
+2320   5                          bHeatTopReq =       0;                         
+2321   5                          bHeatArdReq =   0;
+2322   5                          bHeatStage = 0;
+2323   5                          bSoakStage = 0;
+2324   5                     }
+2325   4                  }
+2326   3                      }
+2327   2                      else
+2328   2                      {
+2329   3                          if(m_u8RunStep==RUN_PHASE_START)    //只在运行状态下执行
+2330   3                  {
+2331   4                              //有定时，无预约
+2332   4                      if((m_u8CookMode==FUNC_ID_PASTA)&&(bTimeCountDown==0))
+2333   4                              {
+2334   5                              if(bTempAch1st==0)
+2335   5                          {
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 39  
+
+2336   6                             m_u8TimeDispCnt = 0;
+2337   6                          }
+2338   5                          else
+2339   5                          {
+2340   6                              if(bSys1S_CookTime)
+2341   6                              {
+2342   7                                  bSys1S_CookTime = 0;
+2343   7                                  m_u8TimeDispCnt++;
+2344   7                                  if(m_u8TimeDispCnt>=20)
+2345   7                                  {
+2346   8                                      m_u8TimeDispCnt = 0;
+2347   8                                      PlaySound(MusicInputFood);
+2348   8                                  }
+2349   7                              }
+2350   6                                      }
+2351   5                      }
+2352   4                      else
+2353   4                      {
+2354   5                          if(bSys1S_CookTime)
+2355   5                                  {
+2356   6                                      bSys1S_CookTime =       0;
+2357   6                                          DecTime(tmCookTime);
+2358   6                                              if((tmCookTime[0]==59)&&(tmCookTime[1]==0)&&(tmCookTime[2]==0))
+2359   6                                              {
+2360   7                                                  if(((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))&&(bStageChgReq==0))
+2361   7                                  {
+2362   8                                      m_u8RunStep=RUN_PHASE_DRAINED;
+2363   8                                      ResetCurScript();           //必须停止脚本运行，不然会再赋值倒计时时间
+2364   8                                      PlaySound(MusicCountDown);
+2365   8                                  }
+2366   7                                  else
+2367   7                                  {
+2368   8                                      if((m_u8CookMode==FUNC_ID_BREADRISING)||(m_u8CookMode==FUNC_ID_YOGURT)||(m
+             -_u8CookMode==FUNC_ID_PASTA)
+2369   8                                      ||(m_u8CookMode==FUNC_ID_JAM)||(m_u8CookMode==FUNC_ID_CREAMCHEESE)||(m_u8C
+             -ookMode==FUNC_ID_DESSERT)
+2370   8                                      ||((m_u8CookMode==FUNC_ID_DIY)&&(u8CookTemp<=100)))
+2371   8                                      {
+2372   9                                          EnterDefault();
+2373   9                                      }
+2374   8                                      else
+2375   8                                      {
+2376   9                                                          EnterWarm();
+2377   9                                          bWarm_Start = 1;
+2378   9                                          bSys1S_CookTime = 1;        //立即刷新显示
+2379   9                                      }
+2380   8                                      PlaySound(MusicCookEnd);
+2381   8                                      return;
+2382   8                                  }
+2383   7                                              }
+2384   6                              FuncRunDisp(m_u8RunStep);
+2385   6                                      }
+2386   5                      }
+2387   4                              }
+2388   3                      }
+2389   2          }
+2390   1              else
+2391   1              {
+2392   2                      //有预约
+2393   2              ResetCurScript();       //预约状态下不执行脚本     
+2394   2              bHeatPwrReq = 0;        //关所有加热
+2395   2              g_u8HiTemp = 0;         //预约状态下不加热                      
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 40  
+
+2396   2              bHeatTopReq     = 0;                       
+2397   2              bHeatArdReq = 0;
+2398   2              bHeatStage = 0;         
+2399   2              bSoakStage = 0;
+2400   2      
+2401   2              if(m_u8RunStep==RUN_PHASE_START)    //只在运行状态下执行
+2402   2              {
+2403   3                      if(bCalBookTime_EN)
+2404   3                      {
+2405   4                              bCalBookTime_EN =       0;                      //清预约计算
+2406   4      
+2407   4                              tmIntCookTime[2]        =       tmBookTime[2];
+2408   4                              tmIntCookTime[1]        =       tmBookTime[1];
+2409   4      
+2410   4                              //计算烹饪需要的时间
+2411   4                              tmCalCookTime[2]        =       tmCookTime[2];
+2412   4                              tmCalCookTime[1]        =       tmCookTime[1];
+2413   4                              if((tmCookTime[0]==59)&&(tmCookTime[1]==0)&&(tmCookTime[2]==0))
+2414   4                              {               
+2415   5                                  tmCalCookTime[2] = tmMinBookTime[2];
+2416   5                                  tmCalCookTime[1] = tmMinBookTime[1];
+2417   5                              }
+2418   4                              
+2419   4                              //间隔时间是否满足烹饪所需时间
+2420   4                              if(tmIntCookTime[2]<tmCalCookTime[2])
+2421   4                              {
+2422   5                                      bBookTime_EN    =       0;                      //间隔时间小于烹饪时间，取消预约
+2423   5                                      bLEDComeback    =       1;                      //恢复正常烹饪显示
+2424   5                              }
+2425   4                              else    
+2426   4                              {
+2427   5                                      if(tmIntCookTime[2]==tmCalCookTime[2])
+2428   5                                      {
+2429   6                                              if(tmIntCookTime[1]<=tmCalCookTime[1])
+2430   6                                              {
+2431   7                                                      bBookTime_EN    =       0;                      //间隔时间小于烹饪时间，取消预约
+2432   7                                                      bLEDComeback    =       1;                      //恢复正常烹饪显示
+2433   7                                              }
+2434   6                                      }
+2435   5                              }
+2436   4                      }
+2437   3                      else
+2438   3                      {
+2439   4                              if((tmCalCookTime[2]==tmBookTime[2])&&(tmCalCookTime[1]==tmBookTime[1]))
+2440   4                              {
+2441   5                                      //烹饪开始时间==当前时间
+2442   5                                      bBookTime_EN    =       0;                              //预约标志取消
+2443   5                                      bLEDComeback    =       1;                              //恢复到烹饪状态显示
+2444   5                              }
+2445   4                      }
+2446   3      
+2447   3                      if(bSys1S_BookTime)
+2448   3                      {
+2449   4                              bSys1S_BookTime =       0;
+2450   4                              DecTime(tmBookTime);
+2451   4                      FuncRunDisp(m_u8RunStep);
+2452   4                      }
+2453   3              }
+2454   2              }
+2455   1      }
+2456          
+2457          /*-----------------------------------------------------------------------------*
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 41  
+
+2458          *  Function Description:                                                       *
+2459          *      功能运行状态下的显示                                                            * 
+2460          *  Parameters:                                                                 *
+2461          *      Step                                                                    *
+2462          *  Return                                                                      *
+2463          *      None                                                                    *
+2464          *----------------------------------------------------------------------------*/
+2465          static  void    FuncRunDisp(uint8 Step)
+2466          {
+2467   1          #ifdef      DEBUG0
+2468   1          uint16 i,j;
+2469   1          #endif
+2470   1          
+2471   1          ClrLedBlank(BIT_LED_ALL);
+2472   1          SetLedBlank(BIT_LED_START);
+2473   1          SetLedBlank(BIT_LED_STOP);
+2474   1      
+2475   1          switch(Step)
+2476   1          {
+2477   2              case    RUN_PHASE_START:                //开始工作
+2478   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+2479   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_CONFIRM);
+2480   2                  LCDDispZone3(0, 0, m_u8Foodtype, ZONE3_STAT_ALLOFF);
+2481   2                  if(bBookTime_EN)
+2482   2                  {
+2483   3                      if(m_u8CurTimeDispCnt==0)
+2484   3                      {    
+2485   4                          LCDDispZone4(m_u8DIYMode,u8CookTemp,tmBookTime,ZONE4_STAT_SET_CONFIRM);
+2486   4                      }
+2487   3                      else
+2488   3                      {
+2489   4                          LCDDispZone4(m_u8DIYMode,u8CookTemp,tmCookTime,ZONE4_STAT_SET_DEFAULT); //在预约状态下
+             -显示烹饪温度和时间
+2490   4                      }
+2491   3                      LedOn(BIT_LED_DELAY);
+2492   3                  }
+2493   2                  else
+2494   2                  {
+2495   3                      //无预约
+2496   3                      if(m_u8CookMode<=9)            //健康菜单
+2497   3                      {
+2498   4                          if(m_u8CookMode==FUNC_ID_BABYPORRIDGE)
+2499   4                          {
+2500   5                              if((tmCookTime[0]==59)&&(tmCookTime[1]==0)&&(tmCookTime[2]==0))
+2501   5                              {
+2502   6                                  LCDDispZone4(m_u8Age|0x80, 0, 0, ZONE4_STAT_AUTO_CONFIRM);
+2503   6                              }
+2504   5                              else
+2505   5                              {
+2506   6                                  LCDDispZone4(m_u8Age|0x80, 0, tmCookTime, ZONE4_STAT_SET_CONFIRM);//倒计时显示
+2507   6                              }
+2508   5                          }
+2509   4                          else
+2510   4                          {
+2511   5                              if((tmCookTime[0]==59)&&(tmCookTime[1]==0)&&(tmCookTime[2]==0))
+2512   5                              {
+2513   6                                  LCDDispZone4(m_u8DIYMode,0,0,ZONE4_STAT_AUTO_CONFIRM);
+2514   6                              }
+2515   5                              else
+2516   5                              {
+2517   6                                  LCDDispZone4(m_u8DIYMode,0,tmCookTime,ZONE4_STAT_SET_CONFIRM);    //倒计时显示
+2518   6                              }
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 42  
+
+2519   5                          }
+2520   4                      }
+2521   3                      else                           //经典菜单
+2522   3                      {
+2523   4                          if((m_u8CookMode==FUNC_ID_RISOTTO)||((m_u8CookMode==FUNC_ID_PASTA)&&(bTimeCountDown==0
+             -)))
+2524   4                          {
+2525   5                              LCDDispZone4(m_u8DIYMode, 0, 0, ZONE4_STAT_AUTO_CONFIRM);
+2526   5                          }
+2527   4                          else
+2528   4                          {
+2529   5                              LCDDispZone4(m_u8DIYMode,u8CookTemp,tmCookTime,ZONE4_STAT_SET_CONFIRM);
+2530   5                          }
+2531   4                      }
+2532   3                  }
+2533   2                  if(m_u8CookMode<=9)               
+2534   2                  {
+2535   3                      //营养菜单
+2536   3                      if((m_u8CookMode==FUNC_ID_BUCKWHEAT)||(m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_I
+             -D_CHICKPEAS))
+2537   3                      {
+2538   4                          PlayGif(GifCookerBSK,600, 2);   //动态旋转方框
+2539   4                      }
+2540   3                      else
+2541   3                      {
+2542   4                          PlayGif(GifCookerNBSK,600, 2);  //动态旋转方框
+2543   4                      }
+2544   3                  }
+2545   2                  else                   
+2546   2                  {
+2547   3                      //经典菜单
+2548   3                      if(m_u8CookMode==FUNC_ID_BROWNING)
+2549   3                      {
+2550   4                          PlayGif(GifCookerNBSKNLID, 600, 2); //动态旋转方框
+2551   4                      }
+2552   3                      else
+2553   3                      {
+2554   4                          PlayGif(GifCookerNBSK,600, 2);  //动态旋转方框
+2555   4                          if((m_u8CookMode==FUNC_ID_PASTA)&&(bTempAch1st==1)&&(bTimeCountDown==0))   //pasta
+2556   4                          {
+2557   5                              PlayGif(GifCookerNBSKNLID, 600, 0); 
+2558   5                          }
+2559   4                      }
+2560   3                  }
+2561   2                  ClrLedBlank(BIT_LED_ALL);
+2562   2                  LedOn(BIT_LED_START);
+2563   2                  if(m_u8CookMode==FUNC_ID_REHEAT) LedOn(BIT_LED_REHEAT);
+2564   2                  if(bBookTime_EN) LedOn(BIT_LED_DELAY);
+2565   2                  
+2566   2                  #ifdef      DEBUG0
+2567   2                  if(bDebug_EN)
+2568   2                  {
+2569   3                      LCDDispZone1(0, 0, ZONE1_STAT_ALLOFF);
+2570   3                      LCDDispZone2(0, ZONE2_STAT_ALLOFF);
+2571   3                      i =  GetScriptStage();
+2572   3                      i =  HEX8toBCD(i);
+2573   3                      j =  ADCGetData(AD_CH_TOP);
+2574   3                      j =  HEX8toBCD(j);
+2575   3                      LCDDispZone3(i, j, 0, ZONE3_STAT_DEBUG);
+2576   3                      i =  ADCGetData(AD_CH_BOT);
+2577   3                      tmDebugTime[1] =  g_u16RelayTime/60;
+2578   3                      tmDebugTime[2] =  g_u16RelayTime/3600;
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 43  
+
+2579   3                      LCDDispZone4(0,i,tmDebugTime,ZONE4_STAT_DEBUG);
+2580   3                      ClrLedBlank(BIT_LED_ALL);
+2581   3                  }
+2582   2                  #endif
+2583   2                  
+2584   2                  break;
+2585   2              case    RUN_PHASE_DRAINED:          //滤水(beans & chickpeas & beans+brownrice)
+2586   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+2587   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_CONFIRM);
+2588   2                  LCDDispZone3(0, 0, m_u8Foodtype, ZONE3_STAT_ALLOFF);
+2589   2                  LCDDispZone4(m_u8DIYMode,0,0,ZONE4_STAT_ALLOFF);
+2590   2                  PlayGif(GifOutfood,600,0);       //取出食物 & 倒掉水
+2591   2                  break;
+2592   2              case    RUN_PHASE_DRAINEDFOOD:     //放入滤水后的食物(beans & chickpeas & beans+brownrice)
+2593   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+2594   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_CONFIRM);
+2595   2                  LCDDispZone3(0, 0, m_u8Foodtype, ZONE3_STAT_ALLOFF);
+2596   2                  LCDDispZone4(m_u8DIYMode,0,0,ZONE4_STAT_ALLOFF);
+2597   2                  if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))PlayGif(GifDrainedfoodBSK,
+             - 600,0);
+2598   2                  break;
+2599   2              case    RUN_PHASE_FOODCUPS:         //再放入食物(beans+brownrice)
+2600   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+2601   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_CONFIRM);
+2602   2                  LCDDispZone3(m_u16Cups, m_u16Water, m_u8Foodtype, ZONE3_STAT_PUTFOOD);
+2603   2                  LCDDispZone4(m_u8DIYMode,0,0,ZONE4_STAT_ALLOFF);
+2604   2                  PlayGif(GifFoodNBSK,600,0);
+2605   2                  break;
+2606   2              case    RUN_PHASE_WATERCUPS:        //再放入水(beans & chickpeas & beans+brownrice)
+2607   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+2608   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_CONFIRM);
+2609   2                  LCDDispZone3(m_u16Cups, m_u16Water, m_u8Foodtype, ZONE3_STAT_PUTWATER);
+2610   2                  LCDDispZone4(m_u8DIYMode,0,0,ZONE4_STAT_ALLOFF);
+2611   2                  if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))PlayGif(GifWaterBSK, 600, 
+             -0);        
+2612   2                  break;
+2613   2              case    RUN_PHASE_TIME:             //运行状态下时间调整(Cooktime & Booktime)
+2614   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+2615   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_CONFIRM);
+2616   2                  LCDDispZone3(0, 0, m_u8Foodtype, ZONE3_STAT_ALLOFF);
+2617   2                  if(bBookTime_EN)
+2618   2                  {
+2619   3                      LCDDispZone4(m_u8DIYMode,u8CookTemp,tmBookTime,ZONE4_STAT_TIME_SELECT);
+2620   3                      LedOn(BIT_LED_DELAY);
+2621   3                  }
+2622   2                  else
+2623   2                  {
+2624   3                      if(m_u8CookMode<=9) 
+2625   3                      {
+2626   4                          //营养菜单
+2627   4                          LCDDispZone4(m_u8DIYMode,0,0,ZONE4_STAT_ALLOFF);
+2628   4                      }
+2629   3                      else
+2630   3                      {
+2631   4                          //经典菜单
+2632   4                          LCDDispZone4(m_u8DIYMode,u8CookTemp,tmCookTime,ZONE4_STAT_TIME_SELECT);
+2633   4                      }
+2634   3                  }
+2635   2                  if(m_u8CookMode<=9)    
+2636   2                  {
+2637   3                      if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))
+2638   3                      {
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 44  
+
+2639   4                          PlayGif(GifCookerBSK,600,0);
+2640   4                      }
+2641   3                  }
+2642   2                  else                   
+2643   2                  {
+2644   3                      if(m_u8CookMode==FUNC_ID_BROWNING)
+2645   3                      {
+2646   4                          PlayGif(GifCookerNBSKNLID, 600, 2); 
+2647   4                      }
+2648   3                      else
+2649   3                      {
+2650   4                          PlayGif(GifCookerNBSK,600, 2);  
+2651   4                          if((m_u8CookMode==FUNC_ID_PASTA)&&(bTempAch1st==1)&&(bTimeCountDown==0))   //pasta
+2652   4                          {
+2653   5                              PlayGif(GifCookerNBSKNLID, 600, 0); 
+2654   5                          }
+2655   4                      }
+2656   3                  }
+2657   2                  if(m_u8CookMode==FUNC_ID_REHEAT) LedOn(BIT_LED_REHEAT);
+2658   2                  break;
+2659   2              case    RUN_PHASE_TEMPERATURE:
+2660   2                  LCDDispZone1(m_u8CookMode, 0, ZONE1_STAT_TEXTURE_CONFIRM);
+2661   2                  LCDDispZone2(0, ZONE2_STAT_ALLOFF);
+2662   2                  LCDDispZone3(0, 0, 0, ZONE3_STAT_ALLOFF);
+2663   2                  LCDDispZone4(m_u8DIYMode,u8CookTemp,tmCookTime,ZONE4_STAT_TEMP_SELECT);
+2664   2                  if(m_u8CookMode==FUNC_ID_BROWNING)
+2665   2                  {
+2666   3                      PlayGif(GifCookerNBSKNLID, 600, 2); //动态旋转方框
+2667   3                  }
+2668   2                  else
+2669   2                      {
+2670   3                          PlayGif(GifCookerNBSK,600, 2);  //动态旋转方框
+2671   3                      }
+2672   2                  if(m_u8CookMode==FUNC_ID_REHEAT) LedOn(BIT_LED_REHEAT);
+2673   2                  break;
+2674   2              case    RUN_PHASE_DELAY:            //再预约(beans & chickpeas)
+2675   2                  LCDDispZone1(m_u8CookMode, m_u8Feel, ZONE1_STAT_TEXTURE_CONFIRM);
+2676   2                  LCDDispZone2(m_u8People, ZONE2_STAT_PEOPLENUM_CONFIRM);
+2677   2                  LCDDispZone3(0, 0, m_u8Foodtype, ZONE3_STAT_ALLOFF);
+2678   2                  LCDDispZone4(0, 0, 0, ZONE4_STAT_ALLOFF);   
+2679   2                  if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))
+2680   2                  {
+2681   3                      PlayGif(GifCookerBSK,600,0);
+2682   3                  }
+2683   2                  SetLedBlank(BIT_LED_DELAY);
+2684   2                  break;
+2685   2              default:
+2686   2                  break;
+2687   2          }
+2688   1      }
+2689          
+2690          /*-----------------------------------------------------------------------------*
+2691           *  Function Description:                                                      *
+2692           *      保温状态处理                                                                               *
+2693           *  Parameters:                                                                *
+2694           *      None                                                                   *
+2695           *  Return                                                                     *
+2696           *      None                                                                   *
+2697           *----------------------------------------------------------------------------*/
+2698          static  void    WarmProc(void)
+2699          {
+2700   1              uint16  u16Key;
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 45  
+
+2701   1              uint8   u8TopDegree =   ADCGetData(AD_CH_TOP);
+2702   1          uint8   u8BotDegree =   ADCGetData(AD_CH_BOT);
+2703   1      
+2704   1              u16Key  =       GetKey();
+2705   1      
+2706   1          if(bWarm_Start)
+2707   1          {
+2708   2              bHeatPwrReq =   1;      
+2709   2              
+2710   2              if(m_u8ChkCnt<15)
+2711   2              {
+2712   3                      if(m_u8ChkCnt>=10)
+2713   3                      {
+2714   4                              g_u8HiTemp      =       65;
+2715   4                              g_u8LoTemp      =       60;
+2716   4                              g_u8OnTime_Set  =       0xf0;
+2717   4                              bHeatTopReq     =       0;
+2718   4                      }
+2719   3                      else
+2720   3                      {
+2721   4                          if(m_u8ChkCnt>=5)
+2722   4                      {
+2723   5                          g_u8HiTemp  =       0;
+2724   5                                  bHeatTopReq =       1;
+2725   5                          bHeatArdReq =   0;
+2726   5                      }
+2727   4                      else
+2728   4                      {
+2729   5                                      g_u8HiTemp      =       0;
+2730   5                                      bHeatTopReq     =       0;
+2731   5                          bHeatArdReq =   1;
+2732   5                      }
+2733   4                      }
+2734   3                      if(bSys_1000MS) m_u8ChkCnt++;   
+2735   3              }
+2736   2              else
+2737   2              {
+2738   3                      g_u8HiTemp      =       70;
+2739   3                      g_u8LoTemp      =       65;
+2740   3                      g_u8OnTime_Set  =       10;
+2741   3                      g_u8OffTime_Set =       20;
+2742   3                  if(u8BotDegree<68)  bHeatArdReq     =       1;
+2743   3                  if(u8BotDegree>73)  bHeatArdReq     =       0;
+2744   3                      if(u8TopDegree<80)      bHeatTopReq     =       1;
+2745   3                      if(u8TopDegree>85)      bHeatTopReq     =       0;
+2746   3              }
+2747   2      
+2748   2              if(bSys1S_CookTime)
+2749   2                  {
+2750   3                      bSys1S_CookTime =       0;
+2751   3                      IncTime(tmCookTime);
+2752   3                      if((tmCookTime[2]==23)&&(tmCookTime[1]==59)&&(tmCookTime[0]==59))
+2753   3                      {
+2754   4                              EnterSetup();
+2755   4                      return;
+2756   4                      }
+2757   3                  LCDDispZone1(0, 0, ZONE1_STAT_ALLOFF);
+2758   3                  LCDDispZone2(0, ZONE2_STAT_ALLOFF);
+2759   3                  LCDDispZone3(0, 0, 0, ZONE3_STAT_ALLOFF);
+2760   3                  LCDDispZone4(0,0,tmCookTime,ZONE4_STAT_SET_CONFIRM);
+2761   3                  ClrLedBlank(BIT_LED_ALL);
+2762   3                  LedOn(BIT_LED_WARM);
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 46  
+
+2763   3                  LedOn(BIT_LED_BKL);
+2764   3                  }
+2765   2          }
+2766   1          else
+2767   1          {
+2768   2              if(u16Key>0) 
+2769   2              {   
+2770   3                  if(m_u8DispDelayCnt==0)
+2771   3                  {
+2772   4                      u16Key = 0;             //从黑屏唤醒时按键不响应
+2773   4                  }
+2774   3                  LedOn(BIT_LED_BKL);         //按下任意按键打开背光
+2775   3                  SetLedBlank(BIT_LED_START);
+2776   3                  SetLedBlank(BIT_LED_STOP);
+2777   3                  SetLedBlank(BIT_LED_WARM);
+2778   3                  m_u8DispDelayCnt = 60;
+2779   3              }
+2780   2      
+2781   2              //30S无操作,关闭背光显示
+2782   2                  if(bSys_1000MS)
+2783   2                  {
+2784   3                          if(m_u8DispDelayCnt>0)
+2785   3                          {
+2786   4                                  m_u8DispDelayCnt--;
+2787   4                                  if(m_u8DispDelayCnt==0)
+2788   4                                  {
+2789   5                          ClrLedBlank(BIT_LED_ALL|BIT_LED_BKL);
+2790   5                                  }
+2791   4                          }   
+2792   3                  }
+2793   2          }
+2794   1      
+2795   1          if(TstBit(u16Key,BIT_KEY_START))
+2796   1          {
+2797   2             if(IsNewKey()) 
+2798   2             {
+2799   3                  if(bWarm_Start==0)
+2800   3                  {
+2801   4                      bWarm_Start = 1;
+2802   4                  }
+2803   3             }
+2804   2          }
+2805   1              
+2806   1              if(TstBit(u16Key,BIT_KEY_CANCEL))
+2807   1              {
+2808   2              if(IsNewKey())
+2809   2              {
+2810   3                  if(bWarm_Start)
+2811   3                  {
+2812   4                      PlaySound(MusicOFF);
+2813   4                  }
+2814   3                  else
+2815   3                  {
+2816   4                      EnterDefault();
+2817   4                  }
+2818   3              }
+2819   2              
+2820   2              if((u16Key==VAL_KEY_CANCEL)&&(g_u16KeyRpyCnt==15))      //长按2S进入设置状态
+2821   2              {
+2822   3                  EnterDefault(); 
+2823   3                  PlaySound(MusicCycleEnd);
+2824   3              }
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 47  
+
+2825   2              }
+2826   1      
+2827   1          if(TstBit(u16Key,BIT_KEY_STOP))
+2828   1              {
+2829   2              if(IsNewKey())
+2830   2              {
+2831   3                  if(bWarm_Start)
+2832   3                  {
+2833   4                      PlaySound(MusicOFF);
+2834   4                  }
+2835   3                  else
+2836   3                  {
+2837   4                      EnterDefault();
+2838   4                  }
+2839   3              }
+2840   2              if((u16Key==VAL_KEY_STOP)&&(g_u16KeyRpyCnt==15))        //长按2S进入设置状态
+2841   2              {
+2842   3                  g_u16KeyRpyCnt = 0;
+2843   3                  EnterDefault(); 
+2844   3                  PlaySound(MusicCycleEnd);
+2845   3              }
+2846   2              }
+2847   1      }
+2848                                  
+2849          /*-----------------------------------------------------------------------------*
+2850           *  Function Description:                                                      *
+2851           *      系统报警状态处理                                                                   *
+2852           *  Parameters:                                                                *
+2853           *      None                                                                   *
+2854           *  Return                                                                     *
+2855           *      None                                                                   *
+2856           *----------------------------------------------------------------------------*/
+2857          static  void    ErrorProc(void)
+2858          {
+2859   1              uint16  u16Key;
+2860   1              u16Key  =       GetKey();
+2861   1      
+2862   1              //开始键处理
+2863   1              if(TstBit(u16Key,BIT_KEY_STOP))
+2864   1              {
+2865   2                      if(IsNewKey())
+2866   2                      {   
+2867   3                  EnterSetup();
+2868   3                  if(bKeyMusic_EN==0)
+2869   3                              {
+2870   4                                      PlaySound(MusicOFF);
+2871   4                              }
+2872   3                  return;
+2873   3                      }
+2874   2              }
+2875   1              
+2876   1              if(g_u8ErrorType==0)                    
+2877   1              {
+2878   2                      //报警解除
+2879   2                      m_u8SysID       =       m_u8PrevSysID;
+2880   2                      bLEDComeback    =       1;
+2881   2                      PlaySound(MusicKeyDown);
+2882   2                      return;
+2883   2              }
+2884   1      }
+2885          
+2886          
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 48  
+
+2887          /*-----------------------------------------------------------------------------*
+2888           *  Function Description:                                                      *
+2889           *      系统OFF模式,关闭所有加热和显示                                         *
+2890           *  Parameters:                                                                *
+2891           *      None                                                                   *
+2892           *  Return                                                                     *
+2893           *      None                                                                   *
+2894           *----------------------------------------------------------------------------*/
+2895          static void PowerDownProc(void)
+2896          {
+2897   1          uint16 u16Key;      
+2898   1              u16Key = GetKey(); 
+2899   1      
+2900   1          if(u16Key>0)         //按下任何键唤醒进入待机
+2901   1          {
+2902   2              if(IsNewKey())
+2903   2              {
+2904   3                  EnterDefault();  
+2905   3                  if(bKeyMusic_EN==0)PlaySound(MusicKeyDown);
+2906   3                  return;
+2907   3              }
+2908   2          }
+2909   1      
+2910   1      //      LCDDispAll(0);      //关闭液晶显示，已在LCD驱动程序完成
+2911   1          ClrLedBlank(BIT_LED_ALL|BIT_LED_BKL);//关闭指示灯和背光
+2912   1          bHeatPwrReq =   0;      //关所有加热
+2913   1          g_u8HiTemp  =       0;                                      
+2914   1          bHeatTopReq =       0;              //关闭顶加热
+2915   1          IO_HEAT_TOP =       0;          //关闭顶加热
+2916   1          bHeatArdReq =   0;      //关闭侧加热
+2917   1          IO_HEAT_MID =   0;      //关闭侧加热
+2918   1      }
+2919          
+2920          /*-----------------------------------------------------------------------------*
+2921           *  Function Description:                                                      *
+2922           *      系统自检状态处理                                                                   *
+2923           *  Parameters:                                                                *
+2924           *      None                                                                   *
+2925           *  Return                                                                     *
+2926           *      None                                                                   *
+2927           *----------------------------------------------------------------------------*/
+2928          static  void    SelfCheckProc(void)
+2929          {
+2930   1              uint16  u16Key;
+2931   1              u16Key =        GetKey();
+2932   1      
+2933   1              if(TstBit(u16Key,BIT_KEY_CANCEL))
+2934   1              {
+2935   2                      if(IsNewKey())
+2936   2                      {       
+2937   3                          if(m_u8SelfChkStep==8)
+2938   3                  {
+2939   4                      m_u8SelfChkStep++;
+2940   4                  }
+2941   3                  else
+2942   3                  {
+2943   4                      EnterSetup();
+2944   4                  }
+2945   3                      }
+2946   2              }
+2947   1      
+2948   1          if(TstBit(u16Key,BIT_KEY_PLUS))
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 49  
+
+2949   1          {
+2950   2              if(IsNewKey())
+2951   2              {
+2952   3                  if((m_u8SelfChkStep==0)||(m_u8SelfChkStep==5))
+2953   3                  {
+2954   4                      m_u8SelfChkStep++;
+2955   4                  }
+2956   3              }
+2957   2          }
+2958   1      
+2959   1          if(TstBit(u16Key,BIT_KEY_REHEAT))
+2960   1          {
+2961   2              if(IsNewKey())
+2962   2              {
+2963   3                  if(m_u8SelfChkStep==1)
+2964   3                  {
+2965   4                      m_u8SelfChkStep++;
+2966   4                  }
+2967   3              }
+2968   2          }
+2969   1      
+2970   1          if(TstBit(u16Key,BIT_KEY_KEEPWARM))
+2971   1          {
+2972   2              if(IsNewKey())
+2973   2              {
+2974   3                   if(m_u8SelfChkStep==2)
+2975   3                   {
+2976   4                      m_u8SelfChkStep++;
+2977   4                   }
+2978   3              }
+2979   2          }
+2980   1      
+2981   1          if(TstBit(u16Key,BIT_KEY_DELAY))
+2982   1          {
+2983   2              if(IsNewKey())
+2984   2              {
+2985   3                  if(m_u8SelfChkStep==3)
+2986   3                  {
+2987   4                       m_u8SelfChkStep++;
+2988   4                  }
+2989   3              }
+2990   2          }
+2991   1      
+2992   1          if(TstBit(u16Key,BIT_KEY_STOP))
+2993   1          {
+2994   2              if(IsNewKey())
+2995   2              {
+2996   3                  if(m_u8SelfChkStep==4)
+2997   3                  {
+2998   4                       m_u8SelfChkStep++;
+2999   4                  }
+3000   3              }
+3001   2          }
+3002   1      
+3003   1          if(TstBit(u16Key,BIT_KEY_START))
+3004   1          {
+3005   2              if(IsNewKey())
+3006   2              {
+3007   3                  if(m_u8SelfChkStep==6)
+3008   3                  {
+3009   4                       m_u8SelfChkStep++;
+3010   4                  }
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 50  
+
+3011   3              }
+3012   2          }
+3013   1      
+3014   1          if(TstBit(u16Key,BIT_KEY_MINUS))
+3015   1          {
+3016   2              if(IsNewKey())
+3017   2              {
+3018   3                  if(m_u8SelfChkStep==7)
+3019   3                  {
+3020   4                       m_u8SelfChkStep++;
+3021   4                  }
+3022   3              }
+3023   2          }
+3024   1      
+3025   1          if(TstBit(u16Key,BIT_KEY_DIY))
+3026   1          {
+3027   2              if(IsNewKey())
+3028   2              {
+3029   3                  if(m_u8SelfChkStep==9)
+3030   3                  {
+3031   4                       m_u8SelfChkStep++;
+3032   4                  }
+3033   3              }
+3034   2          }
+3035   1      
+3036   1          if(TstBit(u16Key,BIT_KEY_TIMER))
+3037   1          {
+3038   2              if(IsNewKey())
+3039   2              {
+3040   3                  if(m_u8SelfChkStep==10)
+3041   3                  {
+3042   4                       m_u8SelfChkStep++;
+3043   4                  }
+3044   3              }
+3045   2          }
+3046   1          
+3047   1          if(TstBit(u16Key,BIT_KEY_MENU))
+3048   1          {
+3049   2              if(IsNewKey())
+3050   2              {
+3051   3                  if((m_u8SelfChkStep==11)||(m_u8SelfChkStep==12)||(m_u8SelfChkStep==13)
+3052   3                  ||(m_u8SelfChkStep==14)||(m_u8SelfChkStep==15)||(m_u8SelfChkStep==16)||(m_u8SelfChkStep==17))
+3053   3                  {
+3054   4                      m_u8SelfChkStep++;  
+3055   4                      if(m_u8SelfChkStep==15)
+3056   4                      {
+3057   5                          bHeatPwrReq =   1;         
+3058   5                          g_u8HiTemp  =       0;
+3059   5                                      bHeatTopReq     =       1;      
+3060   5                          bHeatArdReq =   0;
+3061   5                      }
+3062   4                      if(m_u8SelfChkStep==16)
+3063   4                      {
+3064   5                          bHeatPwrReq =   1;                     
+3065   5                          g_u8HiTemp  =       0;
+3066   5                                      bHeatTopReq     =       0;      
+3067   5                          bHeatArdReq =   1;
+3068   5                      }
+3069   4                      if(m_u8SelfChkStep==17)
+3070   4                      {
+3071   5                          bHeatPwrReq =   1;                       
+3072   5                          g_u8HiTemp = 102;
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 51  
+
+3073   5                              g_u8LoTemp = 100;
+3074   5                              g_u8OnTime_Set = 0xf0;
+3075   5                          bHeatTopReq =       0;
+3076   5                          bHeatArdReq = 0;
+3077   5                      }
+3078   4                      if(m_u8SelfChkStep==18)
+3079   4                      {
+3080   5                          bHeatPwrReq = 0;        //关所有加热
+3081   5                          g_u8HiTemp = 0;             //停止加热      
+3082   5                          bHeatTopReq = 0;
+3083   5                          bHeatArdReq = 0;
+3084   5                          g_u8OnTime_Set = 0;
+3085   5                          PlaySound(MusicPoweron);
+3086   5                      }
+3087   4                  }
+3088   3              }
+3089   2          }
+3090   1      }
+3091          
+3092          /*-------------------------------状态入口程序----------------------------------*
+3093          /*-----------------------------------------------------------------------------*
+3094           *  Function Description:                                                      *
+3095           *      进入复位模式                                                                           *
+3096           *  Parameters:                                                                *
+3097           *      None                                                                   *
+3098           *  Return                                                                     *
+3099           *      None                                                                   *
+3100           *----------------------------------------------------------------------------*/
+3101          void    EnterReset(void)
+3102          {
+3103   1          ReadFlash(0x0000,(uint8*)&Flash);           //读取类EEPROM
+3104   1          if(Flash.RecordFlag!=RECORD_NOEMPTY)    //判断是否有初始值
+3105   1              {
+3106   2                  Flash.ROM[SSP_DIY1_TM1] = 30;       //若没有初始值，则需要赋值
+3107   2                      Flash.ROM[SSP_DIY1_TM2] = 0;
+3108   2                      Flash.ROM[SSP_DIY1_TMP] = 100;
+3109   2              Flash.ROM[SSP_DIY1_COOKMODE] = 1;
+3110   2              Flash.ROM[SSP_DIY1_TEXTURE] = 1;
+3111   2              Flash.ROM[SSP_DIY1_PEOPLE] = 2;
+3112   2              Flash.ROM[SSP_DIY1_AGE] = 0;
+3113   2              
+3114   2              Flash.ROM[SSP_DIY2_TM1] = 30;       
+3115   2                      Flash.ROM[SSP_DIY2_TM2] = 0;
+3116   2                      Flash.ROM[SSP_DIY2_TMP] = 100;
+3117   2              Flash.ROM[SSP_DIY2_COOKMODE] = 1;
+3118   2              Flash.ROM[SSP_DIY2_TEXTURE] = 1;
+3119   2              Flash.ROM[SSP_DIY2_PEOPLE] = 2;
+3120   2              Flash.ROM[SSP_DIY2_AGE] = 0;
+3121   2              
+3122   2              Flash.ROM[SSP_DIY3_TM1] = 30;       
+3123   2                      Flash.ROM[SSP_DIY3_TM2] = 0;
+3124   2                      Flash.ROM[SSP_DIY3_TMP] = 100;
+3125   2              Flash.ROM[SSP_DIY3_COOKMODE] = 1;
+3126   2              Flash.ROM[SSP_DIY3_TEXTURE] = 1;
+3127   2              Flash.ROM[SSP_DIY3_PEOPLE] = 2;
+3128   2              Flash.ROM[SSP_DIY3_AGE] = 0;
+3129   2              
+3130   2              Flash.ROM[SSP_DIY4_TM1] = 30;       
+3131   2                      Flash.ROM[SSP_DIY4_TM2] = 0;
+3132   2                      Flash.ROM[SSP_DIY4_TMP] = 100;
+3133   2              Flash.ROM[SSP_DIY4_COOKMODE] = 1;
+3134   2              Flash.ROM[SSP_DIY4_TEXTURE] = 1;
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 52  
+
+3135   2              Flash.ROM[SSP_DIY4_PEOPLE] = 2;
+3136   2              Flash.ROM[SSP_DIY4_AGE] = 0;
+3137   2              
+3138   2              Flash.ROM[SSP_DIY5_TM1] = 30;       
+3139   2                      Flash.ROM[SSP_DIY5_TM2] = 0;
+3140   2                      Flash.ROM[SSP_DIY5_TMP] = 100;
+3141   2              Flash.ROM[SSP_DIY5_COOKMODE] = 1;
+3142   2              Flash.ROM[SSP_DIY5_TEXTURE] = 1;
+3143   2              Flash.ROM[SSP_DIY5_PEOPLE] = 2;
+3144   2              Flash.ROM[SSP_DIY5_AGE] = 0;
+3145   2              
+3146   2              Flash.ROM[SSP_LASTMENU] = FUNC_ID_WHITERICE;
+3147   2              Flash.ROM[SSP_LASTDIY] = 0;
+3148   2              Flash.ROM[SSP_LASTAGE] = 0;
+3149   2              
+3150   2              Flash.ROM[SSP_MUSIC_EN] = 0x00;     //有声音
+3151   2              SSP_Flag = SSP_ERASE_FLAG;
+3152   2                      EraseFlash(0x0000);                 //擦除类EEPROM
+3153   2                  SSP_Flag = SSP_WRITE_FLAG;
+3154   2                  WriteFlash(0x0000,(uint8*)&Flash);
+3155   2          }
+3156   1          bKeyMusic_EN = 0;                       //复位中关闭按键声音
+3157   1          u16PoweronCnt = 400; 
+3158   1          bWarm_EN = 1;
+3159   1              m_u8SysID       =       SYS_ID_RESET;
+3160   1              bSys_1000MS     =       0;
+3161   1          m_u8ResetCnt = 0;
+3162   1          LedOn(BIT_LED_BKL);
+3163   1          LedOn(BIT_LED_ALL);
+3164   1              PlaySound(MusicPoweron);                        
+3165   1      }
+3166          
+3167          /*-----------------------------------------------------------------------------*
+3168           *  Function Description:                                                      *
+3169           *      进入设置模式                                                                           *
+3170           *  Parameters:                                                                *
+3171           *      None                                                                   *
+3172           *  Return                                                                     *
+3173           *      None                                                                   *
+3174           *----------------------------------------------------------------------------*/
+3175          void    EnterSetup(void)
+3176          {
+3177   1              m_u8SysID       =       SYS_ID_SETUP;                                   //系统进入待机状态
+3178   1              ResetCurScript();                                                               //禁止Script运行
+3179   1              bHeatPwrReq =   0;                              //关所有加热
+3180   1              g_u8HiTemp      =       0;                                      
+3181   1              bHeatTopReq     =       0;                                                              //关闭顶加热
+3182   1              IO_HEAT_TOP     =       0;                                                              //关闭顶加热
+3183   1              bHeatArdReq =   0;                              //关闭侧加热
+3184   1              IO_HEAT_MID =   0;                              //关闭侧加热
+3185   1      
+3186   1          m_u8CookMode = FUNC_ID_WHITERICE;
+3187   1          m_u8Feel = 1;
+3188   1          m_u8People = 2;
+3189   1          m_u8Foodtype = 0;
+3190   1          m_u8Watertype = 0;
+3191   1          m_u8Age = 0;
+3192   1          m_u8DIYMode = 0;  
+3193   1          m_u8SetStep = SET_PHASE_MENU;
+3194   1          tmCookTime[0] = 59;
+3195   1          tmCookTime[1] = 0;  
+3196   1          tmCookTime[2] = 0;
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 53  
+
+3197   1          u8CookTemp = 0;                     
+3198   1          FuncSetDisp(m_u8SetStep);   
+3199   1              tmBookTime[0]   =       59;                                                     //清预约时间
+3200   1              tmBookTime[1]   =       0;
+3201   1              tmBookTime[2]   =       0;
+3202   1              m_u8ChkCnt              =       0;                                                      //清自检计数器
+3203   1              g_u8ErrorType   =       0;                                                      //清报警类型
+3204   1      
+3205   1              bBookTime_EN    =       0;
+3206   1              bCalBookTime_EN =       0;
+3207   1              bTimeDisp_EN    =       0;                                                      //时间不允许调整
+3208   1              bTempDisp_EN    =   0;
+3209   1          bTimeAdjSt      =   0;
+3210   1          m_u8AutoRunCnt = 0;
+3211   1          m_u8DispDelayCnt = 60;
+3212   1          LedOn(BIT_LED_BKL);
+3213   1              bStageChgReq = 0;
+3214   1          bSoakStage = 0;
+3215   1          bHeatStage = 0;
+3216   1      }
+3217          
+3218          /*-----------------------------------------------------------------------------*
+3219           *  Function Description:                                                      *
+3220           *      进入默认设置(上一次运行的功能)                                         *
+3221           *  Parameters:                                                                *
+3222           *      None                                                                   *
+3223           *  Return                                                                     *
+3224           *      None                                                                   *
+3225           *----------------------------------------------------------------------------*/
+3226          void    EnterDefault(void)
+3227          {
+3228   1          EnterSetup();
+3229   1          m_u8CookMode = Flash.ROM[SSP_LASTMENU];   
+3230   1          m_u8LastAge = Flash.ROM[SSP_LASTAGE];
+3231   1          if(m_u8CookMode==FUNC_ID_DIY)               //默认功能是DIY功能
+3232   1          {   
+3233   2              m_u8DIYMode = Flash.ROM[SSP_LASTDIY];
+3234   2              m_u8SetStep = SET_PHASE_DIY;
+3235   2              SetDIYModeByDIY(m_u8DIYMode);
+3236   2          }
+3237   1          else                            //默认是菜单功能
+3238   1          {
+3239   2             if(m_u8CookMode==FUNC_ID_REHEAT)
+3240   2             {
+3241   3                  m_u8SetStep = SET_PHASE_DEFAULT;
+3242   3             }
+3243   2             else
+3244   2             {
+3245   3                  m_u8SetStep = SET_PHASE_MENU;  
+3246   3             }
+3247   2             if(m_u8CookMode>10)
+3248   2             {
+3249   3                 SetDefCookTime(m_u8CookMode);
+3250   3                 SetDefCookTemp(m_u8CookMode);
+3251   3                 tmCookTime[0] = 59;
+3252   3                 tmCookTime[1] = tmDefCookTime[1];    //默认烹饪时间
+3253   3                 tmCookTime[2] = tmDefCookTime[2];
+3254   3                 u8CookTemp = DefCookTemp;                    //默认烹饪温度
+3255   3                 m_u8Feel = 0;
+3256   3                 m_u8People = 0;
+3257   3             }
+3258   2          }
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 54  
+
+3259   1          FuncSetDisp(m_u8SetStep);
+3260   1      }
+3261          
+3262          /*-----------------------------------------------------------------------------*
+3263           *  Function Description:                                                      *
+3264           *      进入工作模式                                                                           *
+3265           *  Parameters:                                                                *
+3266           *      None                                                                   *
+3267           *  Return                                                                     *
+3268           *      None                                                                   *
+3269           *----------------------------------------------------------------------------*/
+3270          void    EnterRun(void)
+3271          {
+3272   1          uint8 i=0,j=0;
+3273   1      
+3274   1          if(m_u8DIYMode>0)
+3275   1          {
+3276   2              if(m_u8DIYMode==1) i = 0;
+3277   2              if(m_u8DIYMode==2) i = 7;
+3278   2              if(m_u8DIYMode==3) i = 14;
+3279   2              if(m_u8DIYMode==4) i = 21;
+3280   2              if(m_u8DIYMode==5) i = 28;   
+3281   2      
+3282   2              if(m_u8CookMode==FUNC_ID_DIY)
+3283   2              {
+3284   3                  if((Flash.ROM[i+SSP_DIY1_TM1]!=tmCookTime[1])||(Flash.ROM[i+SSP_DIY1_TM2]!=tmCookTime[2])||(Fl
+             -ash.ROM[i+SSP_DIY1_TMP]!=u8CookTemp)
+3285   3                  ||(Flash.ROM[SSP_LASTMENU]!=m_u8CookMode)||(Flash.ROM[SSP_LASTDIY]!=m_u8DIYMode))
+3286   3                  {
+3287   4                      j = 1;  //需要写入EEPROM
+3288   4                      Flash.ROM[i+SSP_DIY1_TM1] = tmCookTime[1];
+3289   4                      Flash.ROM[i+SSP_DIY1_TM2] = tmCookTime[2];
+3290   4                      Flash.ROM[i+SSP_DIY1_TMP] = u8CookTemp;
+3291   4                      Flash.ROM[SSP_LASTMENU] = m_u8CookMode;
+3292   4                      Flash.ROM[SSP_LASTDIY] = m_u8DIYMode;
+3293   4                  }
+3294   3              }
+3295   2              else
+3296   2              {
+3297   3                  if((m_u8CookMode>0)&&(m_u8CookMode<=21))
+3298   3                  {
+3299   4                      j = 1;  //需要写入EEPROM
+3300   4                      Flash.ROM[i+SSP_DIY1_COOKMODE] = m_u8CookMode;
+3301   4                      Flash.ROM[i+SSP_DIY1_TEXTURE] = m_u8Feel;
+3302   4                      Flash.ROM[i+SSP_DIY1_PEOPLE] = m_u8People;
+3303   4                      if(m_u8CookMode==FUNC_ID_BABYPORRIDGE)
+3304   4                      {
+3305   5                          Flash.ROM[i+SSP_DIY1_AGE] = m_u8Age;
+3306   5                      }
+3307   4                      Flash.ROM[SSP_LASTMENU] = FUNC_ID_DIY;
+3308   4                      Flash.ROM[SSP_LASTDIY] = m_u8DIYMode;
+3309   4                  }
+3310   3              }
+3311   2          }
+3312   1          else
+3313   1          {
+3314   2              if((Flash.ROM[SSP_LASTMENU]!=m_u8CookMode)||(Flash.ROM[SSP_LASTAGE]!=m_u8Age))
+3315   2              {
+3316   3                  j = 1;      //需要写入EEPROM
+3317   3                  Flash.ROM[SSP_LASTMENU] = m_u8CookMode;
+3318   3                  if(m_u8CookMode==FUNC_ID_BABYPORRIDGE)
+3319   3                  {
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 55  
+
+3320   4                      Flash.ROM[SSP_LASTAGE] = m_u8Age;
+3321   4                  }
+3322   3              }
+3323   2          }
+3324   1          
+3325   1          if(j==1)         
+3326   1          {
+3327   2              SSP_Flag = SSP_ERASE_FLAG;
+3328   2              EraseFlash(0x0000);                 //擦除类EEPROM
+3329   2              SSP_Flag = SSP_WRITE_FLAG;
+3330   2              WriteFlash(0x0000,(uint8*)&Flash);
+3331   2          }
+3332   1          
+3333   1          m_u8SysID = SYS_ID_RUN;                     //系统进入烹饪状态
+3334   1          m_u8RunStep = RUN_PHASE_START;  //开始烹饪
+3335   1          FuncRunDisp(RUN_PHASE_START);
+3336   1          LoadVarParam(m_u8CookMode, m_u8Feel, m_u8People);
+3337   1              SetCurScript(m_u8CookMode,m_u8Feel);
+3338   1              bTimeDisp_EN = 0;               
+3339   1              bTempDisp_EN = 0;               
+3340   1          bTimeAdjSt = 0;
+3341   1          bDebug_EN = 0;
+3342   1              m_u8AutoRunCnt = 0;
+3343   1          m_u8CurTimeDispCnt = 0;
+3344   1              m_u8PreTmp = ADCGetData(AD_CH_BOT);     
+3345   1          LedOn(BIT_LED_BKL);
+3346   1          PlaySound(MusicPoweron);        //开始运行长叫一声
+3347   1      }
+3348          
+3349          /*-----------------------------------------------------------------------------*
+3350           *  Function Description:                                                      *
+3351           *      进入保温模式                                                                           *
+3352           *  Parameters:                                                                *
+3353           *      None                                                                   *
+3354           *  Return                                                                     *
+3355           *      None                                                                   *
+3356           *----------------------------------------------------------------------------*/
+3357          void    EnterWarm(void)
+3358          {
+3359   1              m_u8SysID       =       SYS_ID_WARM;
+3360   1              ResetCurScript();                                                               //禁止Script运行
+3361   1              bHeatPwrReq =   0;                              //关所有加热
+3362   1              g_u8HiTemp      =       0;                                              
+3363   1              bHeatTopReq     =       0;                                                              //关闭顶加热
+3364   1              IO_HEAT_TOP     =       0;                                                              //关闭顶加热
+3365   1              bHeatArdReq =   0;                              //关闭侧加热
+3366   1              IO_HEAT_MID =   0;                              //关闭侧加热
+3367   1                                      
+3368   1              tmCookTime[0]   =       0;                                                      //清烹饪时间
+3369   1              tmCookTime[1]   =       0;
+3370   1              tmCookTime[2]   =       0;
+3371   1              bBookTime_EN    =       0;
+3372   1              bCalBookTime_EN =       0;
+3373   1              bTimeDisp_EN    =       0;                                              //时间不允许调整
+3374   1              m_u8ChkCnt              =       0;                                                  //清自检计数器
+3375   1              bWarm_Start     =   0;
+3376   1          bSoakStage = 0;
+3377   1          bHeatStage = 0;
+3378   1          m_u8DispDelayCnt = 60;
+3379   1          LCDDispZone1(0, 0, ZONE1_STAT_ALLOFF);
+3380   1          LCDDispZone2(0, ZONE2_STAT_ALLOFF);
+3381   1          LCDDispZone3(0, 0, 0, ZONE3_STAT_ALLOFF);
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 56  
+
+3382   1          LCDDispZone4(0,0,tmCookTime,ZONE4_STAT_SET_DEFAULT);
+3383   1          PlayGif(NULL, 0 ,1);
+3384   1          ClrLedBlank(BIT_LED_ALL);
+3385   1          SetLedBlank(BIT_LED_START);
+3386   1          SetLedBlank(BIT_LED_STOP);
+3387   1          SetLedBlank(BIT_LED_WARM);
+3388   1          LedOn(BIT_LED_BKL);
+3389   1      }
+3390          
+3391          /*-----------------------------------------------------------------------------*
+3392           *  Function Description:                                                      *
+3393           *      进入关机模式                                                                           *
+3394           *  Parameters:                                                                *
+3395           *      None                                                                   *
+3396           *  Return                                                                     *
+3397           *      None                                                                   *
+3398           *----------------------------------------------------------------------------*/
+3399           void   EnterPowerDown(void)
+3400           {
+3401   1          m_u8SysID = SYS_ID_POWRDOWN;
+3402   1          ResetCurScript();               //禁止Script运行
+3403   1          bHeatPwrReq =   0;              //关所有加热
+3404   1          g_u8HiTemp = 0;
+3405   1          bHeatTopReq =       0;                              //关闭顶加热
+3406   1              IO_HEAT_TOP     =       0;                          //关闭顶加热
+3407   1              bHeatArdReq =   0;              //关闭侧加热
+3408   1              IO_HEAT_MID =   0;              //关闭侧加热
+3409   1              m_u8DispDelayCnt = 0;           //进入OFF模式
+3410   1       }
+3411          
+3412          /*-------------------------------故障检测程序----------------------------------*
+3413          
+3414          /*-----------------------------------------------------------------------------*
+3415           *  Function Description:                                                      *
+3416           *      故障检测                                                                                   *
+3417           *  Parameters:                                                                *
+3418           *      None                                                                   *
+3419           *  Return                                                                     *
+3420           *      None                                                                   *
+3421           *----------------------------------------------------------------------------*/
+3422          void    FaultCheckProc(void)
+3423          {
+3424   1              uint8   u8BotDegree     =       ADCGetData(AD_CH_BOT);
+3425   1              uint8   u8TopDegree =   ADCGetData(AD_CH_TOP);
+3426   1              uint16  adBotData       =       ADCGetVal(AD_CH_BOT);
+3427   1              uint16  adTopData       =       ADCGetVal(AD_CH_TOP);
+3428   1      
+3429   1              if(bCookBySctEN==1)
+3430   1          {
+3431   2              if(m_u8CookMode==FUNC_ID_PASTA)
+3432   2              {
+3433   3                  if(bTempAch1st==0)
+3434   3                  {
+3435   4                          if(u8TopDegree>=90)
+3436   4                          {
+3437   5                                  bTempAch1st = 1;
+3438   5                          PlaySound(MusicAchievedTemp);
+3439   5                          }
+3440   4                  }   
+3441   3              }
+3442   2          }
+3443   1          
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 57  
+
+3444   1          if((bCookBySctEN==1)||(m_u8SysID==SYS_ID_WARM))
+3445   1              {   
+3446   2                  if(bSys_1000MS)
+3447   2                      {
+3448   3                  if(u8BotDegree>=160)
+3449   3                  {
+3450   4                      u8ErrorCnt++;
+3451   4                      if(u8ErrorCnt>=3)
+3452   4                      {
+3453   5                          if((m_u8CookMode!=FUNC_ID_DIY)&&(m_u8CookMode!=FUNC_ID_BAKING)&&(m_u8CookMode!=FUNC_ID
+             -_BROWNING)&&(m_u8CookMode!=FUNC_ID_DESSERT))
+3454   5                          {
+3455   6                              bPanOverTempErr = 1;                        
+3456   6                          }
+3457   5                          if(m_u8SysID==SYS_ID_WARM)
+3458   5                          {
+3459   6                              bPanOverTempErr = 1;
+3460   6                          }
+3461   5                      }         
+3462   4                              }
+3463   3                  else
+3464   3                  {
+3465   4                      u8ErrorCnt = 0;
+3466   4                  }
+3467   3              }
+3468   2              }
+3469   1      
+3470   1              if((m_u8SysID==SYS_ID_CHECK)||(m_u8SysID==SYS_ID_ERROR)||(bCookBySctEN==1)||(m_u8SysID==SYS_ID_WARM))
+3471   1              {
+3472   2                      if((adBotData<10)||(adBotData>1014))    bBotSensorErr=1;
+3473   2                      else    bBotSensorErr=0;        
+3474   2                      if((adTopData<10)||(adTopData>1014))    bTopSensorErr=1;
+3475   2                      else    bTopSensorErr=0;        
+3476   2              }
+3477   1                              
+3478   1              if((m_u8SysID==SYS_ID_RUN)||(m_u8SysID==SYS_ID_WARM)||(m_u8SysID==SYS_ID_CHECK))
+3479   1              {
+3480   2                      if(g_u8ErrorType)
+3481   2                      {
+3482   3                              m_u8PrevSysID = m_u8SysID;
+3483   3                              m_u8SysID = SYS_ID_ERROR;
+3484   3                              PlaySound(MusicSysError);                               //开报警声音    
+3485   3                              bHeatPwrReq =   0;                     //关所有加热
+3486   3                              g_u8HiTemp      =       0;
+3487   3                              bHeatTopReq = 0;
+3488   3                              bHeatArdReq = 0;
+3489   3                      }
+3490   2              }
+3491   1      }
+3492          
+3493          /*------------------------Autotest activate Process----------------------------*
+3494          
+3495          /*-----------------------------------------------------------------------------*
+3496           *  Function Description:                                                      *
+3497           *      Plug in and in the same time  press the start botton during 2s         *
+3498           *  Parameters:                                                                *
+3499           *      None                                                                   *
+3500           *  Return                                                                     *
+3501           *      None                                                                   *
+3502           *----------------------------------------------------------------------------*/
+3503          void    AutotestActivate(void)
+3504          {
+C51 COMPILER V9.52.0.0   SYSTEM                                                            12/24/2015 16:34:47 PAGE 58  
+
+3505   1          if(u16PoweronCnt>0)
+3506   1          {
+3507   2              u16PoweronCnt--;
+3508   2              if(m_u16KeyVal==VAL_KEY_START)
+3509   2              {
+3510   3                  if(g_u16KeyRpyCnt>4)
+3511   3                  {
+3512   4                      if(m_u8SysID!=SYS_ID_CHECK)
+3513   4                      {
+3514   5                          m_u8SysID = SYS_ID_CHECK;
+3515   5                                      m_u8SelfChkStep = 0;
+3516   5                          PlaySound(MusicKeyDown);
+3517   5                      }
+3518   4                  }
+3519   3              }
+3520   2          }
+3521   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =  10047    ----
+   CONSTANT SIZE    =    303    ----
+   XDATA SIZE       =      6    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     20      25
+   IDATA SIZE       =     30    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

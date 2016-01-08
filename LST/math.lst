@@ -1,0 +1,81 @@
+A51 MACRO ASSEMBLER  MATH                                                                 12/24/2015 16:08:17 PAGE     1
+
+
+MACRO ASSEMBLER A51 V8.02b
+OBJECT MODULE PLACED IN .\OBJ\math.obj
+ASSEMBLER INVOKED BY: C:\Keil\C51\BIN\A51.EXE SRC\math.asm NOMOD51 SET(SMALL) DEBUG PRINT(.\LST\math.lst) OBJECT(.\OBJ\m
+                      ath.obj) EP
+
+LOC  OBJ            LINE     SOURCE
+
+                       1     
+                       2     
+                       3     
+                       4     
+                       5     ?PR?_delay?delay SEGMENT CODE         
+                       6     PUBLIC _delay
+----                   7     RSEG  ?PR?_delay?delay
+0000                   8     _delay:                                                                
+                       9                                             ;2T        MOV        R7,xx        
+                      10                                             ;2T        MOV        R6,xx
+                      11                                             ;7T        LCALL
+0000 00               12             nop                             ;1T
+                      13             ;-----------------------------------------------------        
+0001                  14     ??delay_1:
+0001 EF               15             mov        A,R7                    ;1T
+0002 600D             16             jz        ??delay_2                ;3T        JZ        no taken(3T)
+0004 1F               17             dec        R7                      ;2T
+0005 00               18             nop                                ;1T
+0006 00               19             nop                                ;1T
+0007 00               20             nop                                ;1T
+0008 00               21             nop                                ;1T
+0009 00               22             nop                                ;1T
+000A 00               23             nop                                ;1T
+000B 00               24             nop                                ;1T
+000C 00               25             nop                                ;1T
+000D 00               26             nop                                ;1T
+000E 00               27             nop                                ;1T
+000F 80F0             28             sjmp        ??delay_1              ;4T
+0011                  29     ??delay_2:
+                      30                                                ;2T        JZ        taken(add more 2T)
+0011 EE               31             mov        A,R6                    ;1T
+0012 6007             32             jz        ??delay_3                ;3T        JZ        no taken(3T)
+0014 1E               33             dec        R6                      ;2T
+0015 7FFF             34             mov        R7,#0xff                ;2T
+0017 00               35             nop                                ;1T
+0018 00               36             nop                                ;1T
+0019 80E6             37             sjmp        ??delay_1              ;4T
+001B                  38     ??delay_3:
+                      39                                                ;2T        JZ        taken(add more 2T)
+001B 00               40             nop                                ;1T
+001C 00               41             nop                                ;1T
+001D 00               42             nop                                ;1T
+001E 00               43             nop                                ;1T
+001F 00               44             nop                                ;1T
+0020 00               45             nop                                ;1T
+0021 00               46             nop                                ;1T
+0022 00               47             nop                                ;1T
+                      48             ;-----------------------------------------------------
+0023 22               49             RET                                ;8T
+                      50     
+                      51     
+                      52     end
+A51 MACRO ASSEMBLER  MATH                                                                 12/24/2015 16:08:17 PAGE     2
+
+SYMBOL TABLE LISTING
+------ ----- -------
+
+
+N A M E             T Y P E  V A L U E   ATTRIBUTES
+
+??DELAY_1. . . . .  C ADDR   0001H   R   SEG=?PR?_DELAY?DELAY
+??DELAY_2. . . . .  C ADDR   0011H   R   SEG=?PR?_DELAY?DELAY
+??DELAY_3. . . . .  C ADDR   001BH   R   SEG=?PR?_DELAY?DELAY
+?PR?_DELAY?DELAY .  C SEG    0024H       REL=UNIT
+_DELAY . . . . . .  C ADDR   0000H   R   SEG=?PR?_DELAY?DELAY
+
+
+REGISTER BANK(S) USED: 0 
+
+
+ASSEMBLY COMPLETE.  0 WARNING(S), 0 ERROR(S)

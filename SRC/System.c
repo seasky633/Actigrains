@@ -118,24 +118,30 @@ uint8   code    MaxCookTemp_Table[] = {0x64,    0xA0,    0xA0,    0xA0,  0x28,  
 
 
 //Food cups                         2P     4P     6P     8P     10P     12P
-uint16  code    FoodCups[6][6] = { {0x0125,0x0250,0x0375,0x0500,0x0650,0x0800},   //01 & 02
-                                   {0x0100,0x0200,0x0300,0x0425,0x0425,0x0425},   //03
-                                   {0x0125,0x0200,0x0375,0x0500,0x0650,0x0650},   //04
-                                   {0x0100,0x0200,0x0300,0x0400,0x0500,0x0500},   //05 & 09 & 08_P1
-                                   {0x0100,0x0200,0x0300,0x0450,0x0450,0x0450},   //06
+uint16  code    FoodCups[6][6] = { {0x0100,0x0200,0x0300,0x0400,0x0500,0x0600},   //01 & 02 & 05
+                                   {0x0100,0x0200,0x0300,0x0400,0x0400,0x0400},   //03
+                                   {0x0100,0x0200,0x0300,0x0400,0x0450,0x0450},   //04
+                                   {0x0100,0x0200,0x0300,0x0300,0x0300,0x0300},   //06 & 09 
+                                   {0x0125,0x0250,0x0325,0x0500,0x0500,0x0500},   //08_P1
                                    {0x0050,0x0100,0x0150,0x0200,0x0200,0x0200} }; //08_P2
                                      
-uint16  code   WaterCups[11][6]= { {0x0220,0x0440,0x0660,0x0880,0x1100,0x1320},   //01_T1 & 01_T3 & 01_T4 & 02_T1 & 02_T3
-                                   {0x0200,0x0400,0x0600,0x0800,0x1000,0x1200},   //01_T2 & 05_T1 & 05_T2
-                                   {0x0180,0x0360,0x0540,0x0720,0x0900,0x1080},   //02_T2 & 04_T2
-                                   {0x0240,0x0480,0x0720,0x0960,0x1200,0x1440},   //02_T4
-                                   {0x0500,0x1000,0x1500,0x2000,0x2000,0x2000},   //03_T1 & 03_T4
-                                   {0x0260,0x0520,0x0780,0x1040,0x1300,0x1300},   //03_T2 & 05_T4
-                                   {0x0280,0x0560,0x0840,0x1120,0x1400,0x1400},   //04_T1 & 04_T3
-                                   {0x0300,0x0600,0x0900,0x1200,0x1200,0x1200},   //06_P1
-                                   {0x0520,0x1040,0x1560,0x2080,0x2080,0x2080},   //09
-                                   {0x0360,0x0720,0x1080,0x1440,0x1440,0x1440},   //08
-                                   {0x0190,0x0380,0x0570,0x0760,0x0760,0x0760} }; //06_P2
+uint16  code   WaterCups[17][6]= { {0x0200,0x0400,0x0600,0x0800,0x1000,0x1200},   //01_T1 & 01_T3 & 01_T4
+                                   {0x0180,0x0350,0x0530,0x0700,0x0880,0x1050},   //01_T2
+                                   {0x0350,0x0400,0x0600,0x0800,0x1000,0x1200},   //02_T1 & 02_T3
+                                   {0x0330,0x0350,0x0525,0x0700,0x0880,0x1050},   //02_T2
+                                   {0x0380,0x0450,0x0680,0x0900,0x1130,0x1350},   //02_T4
+                                   {0x0500,0x1000,0x1500,0x2000,0x2000,0x2000},   //03_T1
+                                   {0x0280,0x0560,0x0840,0x1120,0x1120,0x1120},   //03_T2
+                                   {0x0560,0x1120,0x1680,0x2240,0x2240,0x2240},   //03_T4
+                                   {0x0400,0x0600,0x0800,0x1000,0x1050,0x1050},   //04_T1 & 04_T3
+                                   {0x0300,0x0400,0x0600,0x0800,0x0900,0x0900},   //04_T2
+                                   {0x0300,0x0450,0x0600,0x0750,0x1000,0x1000},   //05_T1 & 05_T2
+                                   {0x0430,0x0580,0x0750,0x0900,0x1200,0x1200},   //05_T4
+                                   {0x0700,0x1200,0x1800,0x1800,0x1800,0x1800},   //06_P1
+                                   {0x0700,0x0900,0x1300,0x1300,0x1300,0x1300},   //06_P2
+                                   {0x0500,0x1000,0x1500,0x1800,0x1800,0x1800},   //08
+                                   {0x0800,0x1200,0x1800,0x1800,0x1800,0x1800},   //09_P1
+                                   {0x0600,0x1000,0x1400,0x1400,0x1400,0x1400} }; //09_P2
 /*-----------------------------*
  *  static variable declaration*
  *----------------------------*/
@@ -650,15 +656,19 @@ static	void	SetupProc(void)
                     if(m_u8People>=12)  m_u8People = 2;
                     else m_u8People += 2;
                 }
-                if((m_u8CookMode==FUNC_ID_BUCKWHEAT)||(m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS)
-                ||(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS))
+                if((m_u8CookMode==FUNC_ID_BUCKWHEAT)||(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS))
                 {
                     if(m_u8People>=8)  m_u8People = 2;
                     else m_u8People += 2;
-                }
+                } 
                 if((m_u8CookMode==FUNC_ID_QUINOA)||(m_u8CookMode==FUNC_ID_LENTILS))
                 {
                     if(m_u8People>=10)  m_u8People = 2;
+                    else m_u8People += 2;
+                }
+                if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))
+                {
+                    if(m_u8People>=6)  m_u8People = 2;
                     else m_u8People += 2;
                 }
                 if(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS)
@@ -842,8 +852,7 @@ static	void	SetupProc(void)
                     if(m_u8People<=2)  m_u8People = 12;
                     else m_u8People -= 2;
                 }
-                if((m_u8CookMode==FUNC_ID_BUCKWHEAT)||(m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS)
-                ||(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS))
+                if((m_u8CookMode==FUNC_ID_BUCKWHEAT)||(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS))
                 {
                     if(m_u8People<=2)  m_u8People = 8;
                     else m_u8People -= 2;
@@ -851,6 +860,11 @@ static	void	SetupProc(void)
                 if((m_u8CookMode==FUNC_ID_QUINOA)||(m_u8CookMode==FUNC_ID_LENTILS))
                 {
                     if(m_u8People<=2)  m_u8People = 10;
+                    else m_u8People -= 2;
+                }
+                if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))
+                {
+                    if(m_u8People<=2)  m_u8People = 6;
                     else m_u8People -= 2;
                 }
                 if(m_u8CookMode==FUNC_ID_BROWNRICE_LENTILS)
@@ -1538,15 +1552,13 @@ static  void    SetCupsWater(uint8 cookmode,uint8 texture,uint8 people)
 
     m_u16Cups = 0;
     m_u16Water = 0;
-    //米量
-    if((cookmode==1)||(cookmode==2)) i = 0;
+    
+    //Set the grains quantity
+    if((cookmode==1)||(cookmode==2)||(cookmode==5)) i = 0;
     if(cookmode==3) i = 1;
     if(cookmode==4) i = 2;
-    if((cookmode==5)||(cookmode==9)||((cookmode==8)&&(m_u8Foodtype==1)))
-    {
-        i = 3;
-    }
-    if(cookmode==6) i = 4;
+    if((cookmode==6)||(cookmode==9)) i = 3;
+    if((cookmode==8)&&(m_u8Foodtype==1)) i = 4;
     if((cookmode==8)&&(m_u8Foodtype==2)) i = 5;
     if((people>=2)&&(people<=12))
     {
@@ -1554,19 +1566,24 @@ static  void    SetCupsWater(uint8 cookmode,uint8 texture,uint8 people)
     }
     m_u16Cups = FoodCups[i][j];
 
-    //水量
-    if(((cookmode==1)&&(texture==1))||((cookmode==1)&&(texture==3))||((cookmode==1)&&(texture==4))
-      ||((cookmode==2)&&(texture==1))||((cookmode==2)&&(texture==3))) i = 0;
-    if(((cookmode==1)&&(texture==2))||((cookmode==5)&&(texture==1))||((cookmode==5)&&(texture==2))) i = 1;
-    if(((cookmode==2)&&(texture==2))||((cookmode==4)&&(texture==2))) i = 2;
-    if((cookmode==2)&&(texture==4)) i = 3;
-    if(((cookmode==3)&&(texture==1))||((cookmode==3)&&(texture==4))) i = 4;
-    if(((cookmode==3)&&(texture==2))||((cookmode==5)&&(texture==4))) i = 5; 
-    if(((cookmode==4)&&(texture==1))||((cookmode==4)&&(texture==3))) i = 6;
-    if((cookmode==6)&&(m_u8Watertype==0)) i = 7;
-    if(cookmode==9) i = 8;
-    if(cookmode==8) i = 9;
-    if((cookmode==6)&&(m_u8Watertype==1)) i = 10;
+    //set water quantity
+    if(((cookmode==1)&&(texture==1))||((cookmode==1)&&(texture==3))||((cookmode==1)&&(texture==4))) i = 0;
+    if((cookmode==1)&&(texture==2)) i = 1;
+    if(((cookmode==2)&&(texture==1))||((cookmode==2)&&(texture==3))) i = 2;
+    if((cookmode==2)&&(texture==2)) i = 3;
+    if((cookmode==2)&&(texture==4)) i = 4;
+    if((cookmode==3)&&(texture==1)) i = 5;
+    if((cookmode==3)&&(texture==2)) i = 6;
+    if((cookmode==3)&&(texture==4)) i = 7;
+    if(((cookmode==4)&&(texture==1))||((cookmode==4)&&(texture==3))) i = 8;
+    if((cookmode==4)&&(texture==2)) i = 9;
+    if(((cookmode==5)&&(texture==1))||((cookmode==5)&&(texture==2))) i = 10;
+    if((cookmode==5)&&(texture==4)) i = 11;
+    if((cookmode==6)&&(m_u8Watertype==0)) i = 12;
+    if((cookmode==6)&&(m_u8Watertype==1)) i = 13;
+    if(cookmode==8) i = 14;
+    if((cookmode==9)&&(m_u8Watertype==0)) i = 15;
+    if((cookmode==9)&&(m_u8Watertype==1)) i = 16;
     m_u16Water = WaterCups[i][j];
 }
 
@@ -2205,7 +2222,7 @@ static	void	RunProc(void)
                 case    RUN_PHASE_DRAINEDFOOD:
                      m_u8Foodtype = 0; 
                      m_u8RunStep  = RUN_PHASE_WATERCUPS;   
-                    if(m_u8CookMode==FUNC_ID_BEANS)
+                    if((m_u8CookMode==FUNC_ID_BEANS)||(m_u8CookMode==FUNC_ID_CHICKPEAS))
                     {
                         m_u8Watertype = 1;
                     }

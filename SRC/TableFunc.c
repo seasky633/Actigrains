@@ -67,7 +67,7 @@ uint8  code CountDownTimeTab[23][6] = {{15,     15,    15,    15,    15,     15}
                                       {35,     35,    35,    35,    35,     35},    // 17 P6_P1    Beans_P1
                                       {10,     10,    10,    10,    10,     10},    // 18 P6_P2    Beans_P2
                                       {15,     60,    45,    35,    35,     35},    // 19 P7       BabyPorridge
-                                      {10,     10,    10,    10,    10,     10},    // 20 P8       BrownRice_GreenLentils
+                                      {5,      5,     5,     5,     5,      5},     // 20 P8       BrownRice_GreenLentils
                                       {80,     80,    80,    80,    80,     80},    // 21 P9_P1    ChickPeas_P1
                                       {80,     80,    80,    80,    80,     80}};   // 22 P9_P2    ChickPeas_P2
                                       
